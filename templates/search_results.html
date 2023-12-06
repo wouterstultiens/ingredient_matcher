@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search Results</title>
+</head>
+<body>
+    <h1>Search Results for '{{ ingredient }}'</h1>
+    {% if recipes %}
+        <ul>
+            {% for recipe in recipes %}
+                <li>{{ recipe.name }} - Ingredients: {{ recipe.ingredients }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No recipes found with the ingredient '{{ ingredient }}'.</p>
+    {% endif %}
+    <a href="/">Back to search</a>
+</body>
+</html>
