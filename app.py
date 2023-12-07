@@ -11,7 +11,7 @@ def search():
     if request.method == 'POST':
         ingredient = request.form['ingredient']
         # Query the database for recipes containing the ingredient
-        recipes = Recipe.query.filter(Recipe.ingredients.like(f'%{ingredient}%')).all()
+        recipes = Recipe.query.filter(Recipe.ingredient.like(f'%{ingredient}%')).all()
         return render_template('search_results.html', recipes=recipes, ingredient=ingredient)
     return render_template('search.html')
 
