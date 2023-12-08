@@ -1,42 +1,43 @@
 import os
 
-def list_files(startpath, excluded_dirs):
-    file_structure = ""
+def list_files(startpath, excluded_dirs, excluded_files):
+    file_structure = "Project File Structure:\n"
     for root, dirs, files in os.walk(startpath, topdown=True):
-        # Remove excluded directories from traversal
         dirs[:] = [d for d in dirs if d not in excluded_dirs]
 
         level = root.replace(startpath, '').count(os.sep)
         indent = ' ' * 4 * level
-        file_structure += '{}{}/\n'.format(indent, os.path.basename(root))
+        file_structure += f"{indent}{os.path.basename(root)}/\n"
         subindent = ' ' * 4 * (level + 1)
         for f in files:
-            file_structure += '{}{}\n'.format(subindent, f)
+            if f not in excluded_files:
+                file_structure += f"{subindent}{f}\n"
     return file_structure
 
-def main():
-    directory = '.'  # Current directory
-    output_file = 'project_structure.txt'
-    excluded_dirs = {'venv', '.git', '.idea', '__pycache__'}  # Directories to exclude
-
+def write_file_contents(directory, excluded_dirs, excluded_files, output_file):
     with open(output_file, 'w') as file:
-        file.write("Project File Structure:\n")
-        file.write(list_files(directory, excluded_dirs))
+        file.write(list_files(directory, excluded_dirs, excluded_files))
         file.write("\nContents of .py and .html Files:\n")
 
         for root, dirs, files in os.walk(directory):
-            # Skip excluded directories
             if any(excluded in root for excluded in excluded_dirs):
                 continue
 
             for file_name in files:
-                if file_name.endswith('.py') or file_name.endswith('.html'):
+                if file_name.endswith(('.py', '.html')) and file_name not in excluded_files:
                     file_path = os.path.join(root, file_name)
                     file.write(f"\nFile: {file_path}\n\n")
                     with open(file_path, 'r') as f:
-                        contents = f.read()
-                        file.write(contents)
+                        file.write(f.read())
                         file.write("\n\n")
+
+def main():
+    directory = '.'  # Current directory
+    output_file = 'project_structure.txt'
+    excluded_dirs = {'venv', '.git', '.idea', '__pycache__'}
+    excluded_files = {'project_contents.py', 'project_contents.txt'}
+
+    write_file_contents(directory, excluded_dirs, excluded_files, output_file)
 
 if __name__ == "__main__":
     main()
