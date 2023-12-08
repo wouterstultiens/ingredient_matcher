@@ -4,15 +4,23 @@
     <title>Search Results</title>
 </head>
 <body>
-    <h1>Search Results for '{{ ingredient }}'</h1>
+    <h1>Search Results</h1>
     {% if recipes %}
         <ul>
             {% for recipe in recipes %}
-                <li>{{ recipe.name }} - Ingredient: {{ recipe.ingredient }}</li>
+                <li>{{ recipe.name }} - Ingredients:
+                    {% for ingredient in recipe.ingredients %}
+                        {{ ingredient.name }} ({{ ingredient.amount }}),
+                    {% endfor %}
+                    - Steps:
+                    {% for step in recipe.steps %}
+                        {{ step.step }};
+                    {% endfor %}
+                </li>
             {% endfor %}
         </ul>
     {% else %}
-        <p>No recipes found with the ingredient '{{ ingredient }}'.</p>
+        <p>No recipes found.</p>
     {% endif %}
     <a href="/">Back to search</a>
 </body>
