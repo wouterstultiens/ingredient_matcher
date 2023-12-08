@@ -18,6 +18,82 @@ Project File Structure:
 
 Contents of .py and .html Files:
 
+File: .\app.py
+
+from flask import render_template, request
+from config import app, db
+from models import Recipe, Ingredient
+from flask import jsonify
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/search', methods=['GET', 'POST'])
+def search():
+    if request.method == 'POST':
+        ingredients = [i for i in request.form.getlist('ingredient') if i]  # Filter out empty strings
+        recipes = Recipe.query.join(Recipe.ingredients).filter(Ingredient.name.in_(ingredients)).group_by(Recipe.id).having(db.func.count(Recipe.id) == len(ingredients)).all()
+        return render_template('search_results.html', recipes=recipes, ingredients=ingredients)
+    return render_template('search.html')
+
+@app.route('/ingredient-suggestions')
+def ingredient_suggestions():
+    query = request.args.get('q', '')
+    if query:
+        ingredient_list = Ingredient.query.with_entities(Ingredient.name).filter(Ingredient.name.startswith(query)).distinct().all()
+        suggestions = [ingredient.name for ingredient in ingredient_list]
+    else:
+        suggestions = []
+    return jsonify(suggestions)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+File: .\config.py
+
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///recipes.db'
+db = SQLAlchemy(app)
+
+
+File: .\models.py
+
+from config import db
+
+class Recipe(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    type = db.Column(db.String(50))
+    ingredients = db.relationship('Ingredient', backref='recipe', lazy=True)
+    steps = db.relationship('RecipeStep', backref='recipe', lazy=True)
+
+class Ingredient(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    amount = db.Column(db.String(50))
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
+
+class RecipeStep(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    step = db.Column(db.Text, nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
+
+
+
+File: .\__init__.py
+
+from app import app
+from models import db
+
+with app.app_context():
+    db.create_all()
+
+
 File: .\static\dynamic_fields.js
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -43,7 +119,7 @@ function fetchIngredientSuggestions(inputElement) {
     var searchTerm = inputElement.value;
     if (searchTerm.length < 1) {
         closeAllLists();
-        return; // Fetch suggestions for terms longer than 0 characters
+        return;
     }
 
     fetch('/ingredient-suggestions?q=' + encodeURIComponent(searchTerm))
@@ -61,11 +137,9 @@ function showSuggestions(inputElement, suggestions) {
     var list = document.createElement("DIV");
     list.setAttribute("id", inputElement.id + "autocomplete-list");
     list.setAttribute("class", "autocomplete-items");
-    // Position the dropdown directly below the input element
     list.style.position = 'absolute';
     list.style.left = inputElement.getBoundingClientRect().left + 'px';
     list.style.top = (inputElement.getBoundingClientRect().top + inputElement.offsetHeight) + 'px';
-    // Append the list to the body to avoid positioning issues
     document.body.appendChild(list);
 
     suggestions.forEach(function(suggestion) {
@@ -82,11 +156,12 @@ function showSuggestions(inputElement, suggestions) {
 function closeAllLists(elmnt) {
     var items = document.getElementsByClassName("autocomplete-items");
     for (var i = 0; i < items.length; i++) {
-        if (elmnt != items[i] && elmnt != inputElement) {
+        if (elmnt != items[i]) {
             items[i].parentNode.removeChild(items[i]);
         }
     }
 }
+
 
 
 File: .\static\style.css
