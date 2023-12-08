@@ -1,0 +1,194 @@
+Project File Structure:
+./
+    .gitignore
+    add_recipes.py
+    app.py
+    config.py
+    init.py
+    models.py
+    project_contents.py
+    project_structure.txt
+    instance/
+        recipes.db
+    templates/
+        index.html
+        search.html
+        search_results.html
+
+Contents of .py and .html Files:
+
+File: .\add_recipes.py
+
+from app import app
+from models import Recipe
+from config import db
+import pandas as pd
+
+def add_sample_recipes():
+    d = {"id": [1, 2, 3, 4], "name": ["bami", "bami", "nasi", "nasi"], "ingredient": ["mie", "ei", "rijst", "ei"]}
+    df = pd.DataFrame(d)
+
+    for index, row in df.iterrows():
+        recipe = Recipe(id=row["id"], name=row["name"], ingredient=row["ingredient"])
+        db.session.add(recipe)
+
+    db.session.commit()
+
+with app.app_context():
+    add_sample_recipes()
+
+
+File: .\app.py
+
+from flask import render_template, request
+from config import app, db
+from models import Recipe
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/search', methods=['GET', 'POST'])
+def search():
+    if request.method == 'POST':
+        ingredient = request.form['ingredient']
+        # Query the database for recipes containing the ingredient
+        recipes = Recipe.query.filter(Recipe.ingredient.like(f'%{ingredient}%')).all()
+        return render_template('search_results.html', recipes=recipes, ingredient=ingredient)
+    return render_template('search.html')
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+File: .\config.py
+
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///recipes.db'
+db = SQLAlchemy(app)
+
+
+File: .\init.py
+
+from app import app
+from models import db
+
+with app.app_context():
+    db.create_all()
+
+
+File: .\models.py
+
+from config import db
+
+class Recipe(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    ingredient = db.Column(db.Text, nullable=False)
+
+    def __repr__(self):
+        return f'<Recipe {self.name}>'
+
+
+File: .\project_contents.py
+
+import os
+
+def list_files(startpath, excluded_dirs):
+    file_structure = ""
+    for root, dirs, files in os.walk(startpath, topdown=True):
+        # Remove excluded directories from traversal
+        dirs[:] = [d for d in dirs if d not in excluded_dirs]
+
+        level = root.replace(startpath, '').count(os.sep)
+        indent = ' ' * 4 * level
+        file_structure += '{}{}/\n'.format(indent, os.path.basename(root))
+        subindent = ' ' * 4 * (level + 1)
+        for f in files:
+            file_structure += '{}{}\n'.format(subindent, f)
+    return file_structure
+
+def main():
+    directory = '.'  # Current directory
+    output_file = 'project_structure.txt'
+    excluded_dirs = {'venv', '.git', '.idea', '__pycache__'}  # Directories to exclude
+
+    with open(output_file, 'w') as file:
+        file.write("Project File Structure:\n")
+        file.write(list_files(directory, excluded_dirs))
+        file.write("\nContents of .py and .html Files:\n")
+
+        for root, dirs, files in os.walk(directory):
+            # Skip excluded directories
+            if any(excluded in root for excluded in excluded_dirs):
+                continue
+
+            for file_name in files:
+                if file_name.endswith('.py') or file_name.endswith('.html'):
+                    file_path = os.path.join(root, file_name)
+                    file.write(f"\nFile: {file_path}\n\n")
+                    with open(file_path, 'r') as f:
+                        contents = f.read()
+                        file.write(contents)
+                        file.write("\n\n")
+
+if __name__ == "__main__":
+    main()
+
+
+File: .\templates\index.html
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recipe Matcher</title>
+</head>
+<body>
+    <h1>Hello, World!</h1>
+</body>
+</html>
+
+
+File: .\templates\search.html
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recipe Search</title>
+</head>
+<body>
+    <h1>Recipe Search</h1>
+    <form action="/search" method="post">
+        <label for="ingredient">Ingredient:</label>
+        <input type="text" id="ingredient" name="ingredient">
+        <input type="submit" value="Search">
+    </form>
+</body>
+</html>
+
+
+File: .\templates\search_results.html
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search Results</title>
+</head>
+<body>
+    <h1>Search Results for '{{ ingredient }}'</h1>
+    {% if recipes %}
+        <ul>
+            {% for recipe in recipes %}
+                <li>{{ recipe.name }} - Ingredient: {{ recipe.ingredient }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No recipes found with the ingredient '{{ ingredient }}'.</p>
+    {% endif %}
+    <a href="/">Back to search</a>
+</body>
+</html>
+
