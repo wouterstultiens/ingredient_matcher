@@ -1,7 +1,6 @@
 Project File Structure:
 ./
     .gitignore
-    add_recipes.py
     app.py
     config.py
     models.py
@@ -9,6 +8,9 @@ Project File Structure:
     __init__.py
     instance/
         recipes.db
+    static/
+        dynamic_fields.js
+        style.css
     templates/
         index.html
         search.html
@@ -16,120 +18,108 @@ Project File Structure:
 
 Contents of .py and .html Files:
 
-File: .\add_recipes.py
+File: .\static\dynamic_fields.js
 
-import random
-from app import app
-from models import Recipe, Ingredient, RecipeStep
-from config import db
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('addIngredientBtn').addEventListener('click', addIngredientField);
+    document.addEventListener('input', function(event) {
+        if (event.target.matches('.ingredientInput')) {
+            fetchIngredientSuggestions(event.target);
+        }
+    });
+    document.addEventListener("click", function (e) {
+        closeAllLists(e.target);
+    });
+});
 
-# Pools of sample data
-recipe_names = ["Spaghetti Bolognese", "Chicken Curry", "Vegetable Stir Fry", "Beef Stew", "Tomato Soup", "Caesar Salad", "Grilled Cheese Sandwich", "Pepperoni Pizza", "Pancakes", "Fish Tacos"]
-ingredients_pool = [
-    {"name": "spaghetti", "amount": "200g"},
-    {"name": "chicken", "amount": "200g"},
-    {"name": "carrots", "amount": "100g"},
-    {"name": "tomatoes", "amount": "150g"},
-    {"name": "lettuce", "amount": "50g"},
-    {"name": "cheese", "amount": "100g"},
-    {"name": "pepperoni", "amount": "70g"},
-    {"name": "flour", "amount": "200g"},
-    {"name": "fish", "amount": "150g"},
-    {"name": "tortilla", "amount": "2 pieces"}
-]
-steps_pool = [
-    "Boil water",
-    "Fry on pan",
-    "Bake in oven",
-    "Mix ingredients",
-    "Chop vegetables",
-    "Grill on barbecue",
-    "Marinate overnight",
-    "Simmer on low heat",
-    "Whisk together",
-    "Serve with sauce"
-]
+function addIngredientField() {
+    var newField = document.createElement('div');
+    newField.className = 'ingredientField';
+    newField.innerHTML = '<label>Ingredient:</label> <input type="text" name="ingredient" class="ingredientInput" autocomplete="off">';
+    document.getElementById('ingredientFields').appendChild(newField);
+}
 
-def add_sample_recipes(n):
-    for _ in range(n):
-        name = random.choice(recipe_names)
-        ingredients = [Ingredient(name=ingredient["name"], amount=ingredient["amount"]) for ingredient in random.sample(ingredients_pool, 3)]
-        steps = [RecipeStep(step=step) for step in random.sample(steps_pool, 3)]
+function fetchIngredientSuggestions(inputElement) {
+    var searchTerm = inputElement.value;
+    if (searchTerm.length < 1) {
+        closeAllLists();
+        return; // Fetch suggestions for terms longer than 0 characters
+    }
 
-        recipe = Recipe(name=name, type="dinner", ingredients=ingredients, steps=steps)
-        db.session.add(recipe)
+    fetch('/ingredient-suggestions?q=' + encodeURIComponent(searchTerm))
+        .then(response => response.json())
+        .then(suggestions => {
+            showSuggestions(inputElement, suggestions);
+        })
+        .catch(error => console.error('Error fetching ingredient suggestions:', error));
+}
 
-    db.session.commit()
+function showSuggestions(inputElement, suggestions) {
+    closeAllLists();
+    if (!suggestions.length) return;
 
-with app.app_context():
-    add_sample_recipes(10)  # Specify number of recipes to add
+    var list = document.createElement("DIV");
+    list.setAttribute("id", inputElement.id + "autocomplete-list");
+    list.setAttribute("class", "autocomplete-items");
+    // Position the dropdown directly below the input element
+    list.style.position = 'absolute';
+    list.style.left = inputElement.getBoundingClientRect().left + 'px';
+    list.style.top = (inputElement.getBoundingClientRect().top + inputElement.offsetHeight) + 'px';
+    // Append the list to the body to avoid positioning issues
+    document.body.appendChild(list);
 
+    suggestions.forEach(function(suggestion) {
+        var item = document.createElement("DIV");
+        item.innerHTML = suggestion;
+        item.addEventListener("click", function() {
+            inputElement.value = suggestion;
+            closeAllLists();
+        });
+        list.appendChild(item);
+    });
+}
 
-
-File: .\app.py
-
-from flask import render_template, request
-from config import app, db
-from models import Recipe, Ingredient
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/search', methods=['GET', 'POST'])
-def search():
-    if request.method == 'POST':
-        ingredients = request.form.getlist('ingredient')
-        # Query for recipes containing all ingredients
-        recipes = Recipe.query.join(Recipe.ingredients).filter(Ingredient.name.in_(ingredients)).group_by(Recipe.id).having(db.func.count(Recipe.id) == len(ingredients)).all()
-        return render_template('search_results.html', recipes=recipes, ingredients=ingredients)
-    return render_template('search.html')
-
-if __name__ == '__main__':
-    app.run(debug=True)
+function closeAllLists(elmnt) {
+    var items = document.getElementsByClassName("autocomplete-items");
+    for (var i = 0; i < items.length; i++) {
+        if (elmnt != items[i] && elmnt != inputElement) {
+            items[i].parentNode.removeChild(items[i]);
+        }
+    }
+}
 
 
-File: .\config.py
+File: .\static\style.css
 
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+.autocomplete-items {
+    border: 1px solid #d4d4d4;
+    border-bottom: none;
+    border-top: none;
+    z-index: 99;
+    /*position the autocomplete items to be the same width as the container:*/
+    top: 100%;
+    left: 0;
+    right: 0;
+}
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///recipes.db'
-db = SQLAlchemy(app)
+.autocomplete-items div {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #d4d4d4;
+}
 
+.autocomplete-items div:hover {
+    /*when hovering an item:*/
+    background-color: #e9e9e9;
+}
 
-File: .\models.py
+.autocomplete-active {
+    /*when navigating through the items using the arrow keys:*/
+    background-color: DodgerBlue !important;
+    color: #ffffff;
+}
 
-from config import db
-
-class Recipe(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    type = db.Column(db.String(50))
-    ingredients = db.relationship('Ingredient', backref='recipe', lazy=True)
-    steps = db.relationship('RecipeStep', backref='recipe', lazy=True)
-
-class Ingredient(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    amount = db.Column(db.String(50))
-    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
-
-class RecipeStep(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    step = db.Column(db.Text, nullable=False)
-    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
-
-
-
-File: .\__init__.py
-
-from app import app
-from models import db
-
-with app.app_context():
-    db.create_all()
 
 
 File: .\templates\index.html
@@ -138,12 +128,16 @@ File: .\templates\index.html
 <html>
 <head>
     <title>Recipe Matcher</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Welcome to Recipe Matcher</h1>
-    <a href="/search">Search Recipes</a>
+    <div class="container">
+        <h1>Welcome to Recipe Matcher</h1>
+        <a href="/search" class="btn">Search Recipes</a>
+    </div>
 </body>
 </html>
+
 
 
 File: .\templates\search.html
@@ -152,16 +146,26 @@ File: .\templates\search.html
 <html>
 <head>
     <title>Recipe Search</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='dynamic_fields.js') }}"></script>
 </head>
 <body>
-    <h1>Recipe Search</h1>
-    <form action="/search" method="post">
-        <label for="ingredient">Ingredient:</label>
-        <input type="text" id="ingredient" name="ingredient">
-        <input type="submit" value="Search">
-    </form>
+    <div class="container">
+        <h1>Recipe Search</h1>
+        <form action="/search" method="post" id="searchForm">
+            <div id="ingredientFields">
+                <div class="ingredientField">
+                    <label>Ingredient:</label>
+                    <input type="text" name="ingredient" class="ingredientInput" autocomplete="off">
+                </div>
+            </div>
+            <button type="button" id="addIngredientBtn" class="btn">Add Another Ingredient</button>
+            <input type="submit" value="Search" class="btn">
+        </form>
+    </div>
 </body>
 </html>
+
 
 
 File: .\templates\search_results.html

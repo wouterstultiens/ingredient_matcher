@@ -24,7 +24,7 @@ def write_file_contents(directory, excluded_dirs, excluded_files, output_file):
                 continue
 
             for file_name in files:
-                if file_name.endswith(('.py', '.html')) and file_name not in excluded_files:
+                if file_name.endswith(('.py', '.html', '.js', '.css')) and file_name not in excluded_files:
                     file_path = os.path.join(root, file_name)
                     file.write(f"\nFile: {file_path}\n\n")
                     with open(file_path, 'r') as f:
@@ -35,7 +35,7 @@ def main():
     directory = '.'  # Current directory
     output_file = 'project_structure.txt'
     excluded_dirs = {'venv', '.git', '.idea', '__pycache__'}
-    excluded_files = {'project_contents.py', 'project_contents.txt'}
+    excluded_files = {'project_contents.py', 'project_contents.txt', 'add_recipes.py'}
 
     write_file_contents(directory, excluded_dirs, excluded_files, output_file)
 

@@ -2,9 +2,12 @@
 <html>
 <head>
     <title>Recipe Matcher</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Welcome to Recipe Matcher</h1>
-    <a href="/search">Search Recipes</a>
+    <div class="container">
+        <h1>Welcome to Recipe Matcher</h1>
+        <a href="/search" class="btn">Search Recipes</a>
+    </div>
 </body>
 </html>
