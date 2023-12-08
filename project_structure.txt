@@ -4,10 +4,9 @@ Project File Structure:
     add_recipes.py
     app.py
     config.py
-    init.py
     models.py
-    project_contents.py
     project_structure.txt
+    __init__.py
     instance/
         recipes.db
     templates/
@@ -19,30 +18,59 @@ Contents of .py and .html Files:
 
 File: .\add_recipes.py
 
+import random
 from app import app
-from models import Recipe
+from models import Recipe, Ingredient, RecipeStep
 from config import db
-import pandas as pd
 
-def add_sample_recipes():
-    d = {"id": [1, 2, 3, 4], "name": ["bami", "bami", "nasi", "nasi"], "ingredient": ["mie", "ei", "rijst", "ei"]}
-    df = pd.DataFrame(d)
+# Pools of sample data
+recipe_names = ["Spaghetti Bolognese", "Chicken Curry", "Vegetable Stir Fry", "Beef Stew", "Tomato Soup", "Caesar Salad", "Grilled Cheese Sandwich", "Pepperoni Pizza", "Pancakes", "Fish Tacos"]
+ingredients_pool = [
+    {"name": "spaghetti", "amount": "200g"},
+    {"name": "chicken", "amount": "200g"},
+    {"name": "carrots", "amount": "100g"},
+    {"name": "tomatoes", "amount": "150g"},
+    {"name": "lettuce", "amount": "50g"},
+    {"name": "cheese", "amount": "100g"},
+    {"name": "pepperoni", "amount": "70g"},
+    {"name": "flour", "amount": "200g"},
+    {"name": "fish", "amount": "150g"},
+    {"name": "tortilla", "amount": "2 pieces"}
+]
+steps_pool = [
+    "Boil water",
+    "Fry on pan",
+    "Bake in oven",
+    "Mix ingredients",
+    "Chop vegetables",
+    "Grill on barbecue",
+    "Marinate overnight",
+    "Simmer on low heat",
+    "Whisk together",
+    "Serve with sauce"
+]
 
-    for index, row in df.iterrows():
-        recipe = Recipe(id=row["id"], name=row["name"], ingredient=row["ingredient"])
+def add_sample_recipes(n):
+    for _ in range(n):
+        name = random.choice(recipe_names)
+        ingredients = [Ingredient(name=ingredient["name"], amount=ingredient["amount"]) for ingredient in random.sample(ingredients_pool, 3)]
+        steps = [RecipeStep(step=step) for step in random.sample(steps_pool, 3)]
+
+        recipe = Recipe(name=name, type="dinner", ingredients=ingredients, steps=steps)
         db.session.add(recipe)
 
     db.session.commit()
 
 with app.app_context():
-    add_sample_recipes()
+    add_sample_recipes(10)  # Specify number of recipes to add
+
 
 
 File: .\app.py
 
 from flask import render_template, request
 from config import app, db
-from models import Recipe
+from models import Recipe, Ingredient
 
 @app.route('/')
 def index():
@@ -51,10 +79,10 @@ def index():
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     if request.method == 'POST':
-        ingredient = request.form['ingredient']
-        # Query the database for recipes containing the ingredient
-        recipes = Recipe.query.filter(Recipe.ingredient.like(f'%{ingredient}%')).all()
-        return render_template('search_results.html', recipes=recipes, ingredient=ingredient)
+        ingredients = request.form.getlist('ingredient')
+        # Query for recipes containing all ingredients
+        recipes = Recipe.query.join(Recipe.ingredients).filter(Ingredient.name.in_(ingredients)).group_by(Recipe.id).having(db.func.count(Recipe.id) == len(ingredients)).all()
+        return render_template('search_results.html', recipes=recipes, ingredients=ingredients)
     return render_template('search.html')
 
 if __name__ == '__main__':
@@ -71,15 +99,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///recipes.db'
 db = SQLAlchemy(app)
 
 
-File: .\init.py
-
-from app import app
-from models import db
-
-with app.app_context():
-    db.create_all()
-
-
 File: .\models.py
 
 from config import db
@@ -87,56 +106,30 @@ from config import db
 class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    ingredient = db.Column(db.Text, nullable=False)
+    type = db.Column(db.String(50))
+    ingredients = db.relationship('Ingredient', backref='recipe', lazy=True)
+    steps = db.relationship('RecipeStep', backref='recipe', lazy=True)
 
-    def __repr__(self):
-        return f'<Recipe {self.name}>'
+class Ingredient(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    amount = db.Column(db.String(50))
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
+
+class RecipeStep(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    step = db.Column(db.Text, nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
 
 
-File: .\project_contents.py
 
-import os
+File: .\__init__.py
 
-def list_files(startpath, excluded_dirs):
-    file_structure = ""
-    for root, dirs, files in os.walk(startpath, topdown=True):
-        # Remove excluded directories from traversal
-        dirs[:] = [d for d in dirs if d not in excluded_dirs]
+from app import app
+from models import db
 
-        level = root.replace(startpath, '').count(os.sep)
-        indent = ' ' * 4 * level
-        file_structure += '{}{}/\n'.format(indent, os.path.basename(root))
-        subindent = ' ' * 4 * (level + 1)
-        for f in files:
-            file_structure += '{}{}\n'.format(subindent, f)
-    return file_structure
-
-def main():
-    directory = '.'  # Current directory
-    output_file = 'project_structure.txt'
-    excluded_dirs = {'venv', '.git', '.idea', '__pycache__'}  # Directories to exclude
-
-    with open(output_file, 'w') as file:
-        file.write("Project File Structure:\n")
-        file.write(list_files(directory, excluded_dirs))
-        file.write("\nContents of .py and .html Files:\n")
-
-        for root, dirs, files in os.walk(directory):
-            # Skip excluded directories
-            if any(excluded in root for excluded in excluded_dirs):
-                continue
-
-            for file_name in files:
-                if file_name.endswith('.py') or file_name.endswith('.html'):
-                    file_path = os.path.join(root, file_name)
-                    file.write(f"\nFile: {file_path}\n\n")
-                    with open(file_path, 'r') as f:
-                        contents = f.read()
-                        file.write(contents)
-                        file.write("\n\n")
-
-if __name__ == "__main__":
-    main()
+with app.app_context():
+    db.create_all()
 
 
 File: .\templates\index.html
@@ -147,7 +140,8 @@ File: .\templates\index.html
     <title>Recipe Matcher</title>
 </head>
 <body>
-    <h1>Hello, World!</h1>
+    <h1>Welcome to Recipe Matcher</h1>
+    <a href="/search">Search Recipes</a>
 </body>
 </html>
 
@@ -178,15 +172,23 @@ File: .\templates\search_results.html
     <title>Search Results</title>
 </head>
 <body>
-    <h1>Search Results for '{{ ingredient }}'</h1>
+    <h1>Search Results</h1>
     {% if recipes %}
         <ul>
             {% for recipe in recipes %}
-                <li>{{ recipe.name }} - Ingredient: {{ recipe.ingredient }}</li>
+                <li>{{ recipe.name }} - Ingredients:
+                    {% for ingredient in recipe.ingredients %}
+                        {{ ingredient.name }} ({{ ingredient.amount }}),
+                    {% endfor %}
+                    - Steps:
+                    {% for step in recipe.steps %}
+                        {{ step.step }};
+                    {% endfor %}
+                </li>
             {% endfor %}
         </ul>
     {% else %}
-        <p>No recipes found with the ingredient '{{ ingredient }}'.</p>
+        <p>No recipes found.</p>
     {% endif %}
     <a href="/">Back to search</a>
 </body>
