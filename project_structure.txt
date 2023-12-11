@@ -126,8 +126,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     searchInput.addEventListener('input', event => fetchSuggestions(event.target));
     searchButton.addEventListener('click', () => performSearch(searchInput.value));
+    searchInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch(searchInput.value);
+        }
+    });
     document.addEventListener("click", e => closeAllLists(e.target));
 });
+
 
 function fetchSuggestions(inputElement) {
     let searchTerm = inputElement.value;
@@ -238,7 +245,7 @@ File: .\static\style.css
 
 .grid-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, 1fr); /* 3 columns */
     gap: 10px;
     margin-top: 20px;
 }
@@ -247,17 +254,26 @@ File: .\static\style.css
     padding: 20px;
     border: 1px solid #d4d4d4;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .grid-item a {
     text-decoration: none;
     color: black;
+    margin-top: 10px;
+}
+
+.grid-item img {
+    width: 100%;
+    height: auto;
 }
 
 /* Responsive grid for smaller screens */
 @media (max-width: 600px) {
     .grid-container {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr; /* 1 column for small screens */
     }
 }
 
@@ -300,6 +316,9 @@ File: .\templates\index.html
         <div id="searchResults" class="grid-container">
             {% for recipe in recipes %}
                 <div class="grid-item">
+                    {% if recipe.image %}
+                        <img src="{{ url_for('static', filename=recipe.image) }}" alt="{{ recipe.name }}">
+                    {% endif %}
                     <a href="/recipe-page?recipe={{ recipe.id }}">{{ recipe.name }}</a>
                 </div>
             {% endfor %}

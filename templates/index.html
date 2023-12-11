@@ -16,7 +16,7 @@
             {% for recipe in recipes %}
                 <div class="grid-item">
                     {% if recipe.image %}
-                        <img src="{{ url_for('static', filename=recipe.image) }}" alt="{{ recipe.name }}">
+                        <img src="{{ recipe.image }}" alt="{{ recipe.name }}">
                     {% endif %}
                     <a href="/recipe-page?recipe={{ recipe.id }}">{{ recipe.name }}</a>
                 </div>
