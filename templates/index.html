@@ -12,6 +12,13 @@
             <input type="text" id="quickSearchInput" placeholder="Search recipes or ingredients" class="ingredientInput" autocomplete="off">
             <button id="searchButton">Search</button>
         </div>
+        <div id="searchResults" class="grid-container">
+            {% for recipe in recipes %}
+                <div class="grid-item">
+                    <a href="/recipe-page?recipe={{ recipe.id }}">{{ recipe.name }}</a>
+                </div>
+            {% endfor %}
+        </div>
     </div>
 </body>
 </html>
