@@ -14,7 +14,7 @@ def list_files(startpath, excluded_dirs, excluded_files):
                 file_structure += f"{subindent}{f}\n"
     return file_structure
 
-def write_file_contents(directory, excluded_dirs, excluded_files, output_file):
+def write_file_contents(directory, formats, excluded_dirs, excluded_files, output_file):
     with open(output_file, 'w') as file:
         file.write(list_files(directory, excluded_dirs, excluded_files))
         file.write("\nContents of .py and .html Files:\n")
@@ -24,7 +24,7 @@ def write_file_contents(directory, excluded_dirs, excluded_files, output_file):
                 continue
 
             for file_name in files:
-                if file_name.endswith(('.py', '.html', '.js', '.css')) and file_name not in excluded_files:
+                if file_name.endswith(tuple(formats)) and file_name not in excluded_files:
                     file_path = os.path.join(root, file_name)
                     file.write(f"\nFile: {file_path}\n\n")
                     with open(file_path, 'r') as f:
@@ -33,11 +33,12 @@ def write_file_contents(directory, excluded_dirs, excluded_files, output_file):
 
 def main():
     directory = '.'  # Current directory
+    formats = ['.py', '.html']
     output_file = 'project_structure.txt'
-    excluded_dirs = {'venv', '.git', '.idea', '__pycache__'}
+    excluded_dirs = {'venv', '.git', '.idea', '__pycache__', 'recipe_scraper'}
     excluded_files = {'project_contents.py', 'project_contents.txt', 'add_recipes.py'}
 
-    write_file_contents(directory, excluded_dirs, excluded_files, output_file)
+    write_file_contents(directory, formats, excluded_dirs, excluded_files, output_file)
 
 if __name__ == "__main__":
     main()
