@@ -4,8 +4,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     searchInput.addEventListener('input', event => fetchSuggestions(event.target));
     searchButton.addEventListener('click', () => performSearch(searchInput.value));
+    searchInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch(searchInput.value);
+        }
+    });
     document.addEventListener("click", e => closeAllLists(e.target));
 });
+
 
 function fetchSuggestions(inputElement) {
     let searchTerm = inputElement.value;
@@ -59,6 +66,6 @@ function closeAllLists(elmnt) {
 
 function performSearch(searchTerm) {
     if (searchTerm.length > 0) {
-        window.location.href = '/search-results?q=' + encodeURIComponent(searchTerm);
+        window.location.href = '/?q=' + encodeURIComponent(searchTerm);
     }
 }

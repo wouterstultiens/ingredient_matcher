@@ -31,6 +31,15 @@ def search():
         return jsonify(suggestions)
     return jsonify([])
 
+@app.route('/recipe-page', methods=['GET'])
+def recipe_page():
+    recipe_id = request.args.get('recipe', '')
+    if recipe_id:
+        recipe = Recipe.query.get(recipe_id)
+        if recipe:
+            return render_template('recipe_page.html', recipe=recipe)
+    return render_template('404.html')  # Template for page not found
+
 
 if __name__ == '__main__':
     app.run(debug=True)

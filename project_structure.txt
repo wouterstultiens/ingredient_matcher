@@ -12,8 +12,9 @@ Project File Structure:
         dynamic_fields.js
         style.css
     templates/
+        404.html
         index.html
-        search_results.html
+        recipe_page.html
 
 Contents of .py and .html Files:
 
@@ -23,23 +24,11 @@ from flask import render_template, request, jsonify
 from config import app, db
 from models import Recipe, Ingredient
 
-@app.route('/')
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
-
-@app.route('/search', methods=['GET', 'POST'])
-def search():
     query = request.args.get('q', '')
-    if query:
-        ingredient_list = Ingredient.query.with_entities(Ingredient.name).filter(Ingredient.name.contains(query)).distinct().all()
-        recipe_list = Recipe.query.with_entities(Recipe.name).filter(Recipe.name.contains(query)).distinct().all()
-        suggestions = [ingredient.name for ingredient in ingredient_list] + [recipe.name for recipe in recipe_list]
-        return jsonify(suggestions)
-    return render_template('index.html')
-
-@app.route('/search-results')
-def search_results():
-    query = request.args.get('q', '')
+    recipes = []
     if query:
         # Check if the query matches an ingredient
         matching_ingredient = Ingredient.query.filter(Ingredient.name.contains(query)).first()
@@ -50,8 +39,29 @@ def search_results():
             # Otherwise, search for recipes by name
             recipes = Recipe.query.filter(Recipe.name.contains(query)).all()
 
-        return render_template('search_results.html', recipes=recipes, query=query)
-    return render_template('index.html')
+    return render_template('index.html', recipes=recipes, query=query)
+
+
+@app.route('/search', methods=['GET'])
+def search():
+    query = request.args.get('q', '')
+    if query:
+        ingredient_list = Ingredient.query.with_entities(Ingredient.name).filter(
+            Ingredient.name.contains(query)).distinct().all()
+        recipe_list = Recipe.query.with_entities(Recipe.name).filter(Recipe.name.contains(query)).distinct().all()
+        suggestions = [ingredient.name for ingredient in ingredient_list] + [recipe.name for recipe in recipe_list]
+        return jsonify(suggestions)
+    return jsonify([])
+
+@app.route('/recipe-page', methods=['GET'])
+def recipe_page():
+    recipe_id = request.args.get('recipe', '')
+    if recipe_id:
+        recipe = Recipe.query.get(recipe_id)
+        if recipe:
+            return render_template('recipe_page.html', recipe=recipe)
+    return render_template('404.html')  # Template for page not found
+
 
 if __name__ == '__main__':
     app.run(debug=True)
@@ -111,34 +121,21 @@ with app.app_context():
 File: .\static\dynamic_fields.js
 
 document.addEventListener('DOMContentLoaded', function() {
-    var searchInput = document.getElementById('quickSearchInput');
-    var searchButton = document.getElementById('searchButton');
+    let searchInput = document.getElementById('quickSearchInput');
+    let searchButton = document.getElementById('searchButton');
 
-    searchInput.addEventListener('input', function(event) {
-        fetchSuggestions(event.target);
-    });
-
-    searchButton.addEventListener('click', function() {
-        performSearch(searchInput.value);
-    });
-
-    document.addEventListener("click", function (e) {
-        closeAllLists(e.target);
-    });
+    searchInput.addEventListener('input', event => fetchSuggestions(event.target));
+    searchButton.addEventListener('click', () => performSearch(searchInput.value));
+    document.addEventListener("click", e => closeAllLists(e.target));
 });
 
 function fetchSuggestions(inputElement) {
-    var searchTerm = inputElement.value;
-    if (searchTerm.length < 1) {
-        closeAllLists();
-        return;
-    }
+    let searchTerm = inputElement.value;
+    if (searchTerm.length < 1) return closeAllLists();
 
     fetch('/search?q=' + encodeURIComponent(searchTerm))
         .then(response => response.json())
-        .then(suggestions => {
-            showSuggestions(inputElement, suggestions);
-        })
+        .then(suggestions => showSuggestions(inputElement, suggestions))
         .catch(error => console.error('Error fetching suggestions:', error));
 }
 
@@ -146,41 +143,48 @@ function showSuggestions(inputElement, suggestions) {
     closeAllLists();
     if (!suggestions.length) return;
 
-    var list = document.createElement("DIV");
+    let list = createList(inputElement);
+    suggestions.forEach(suggestion => createListItem(inputElement, list, suggestion));
+}
+
+function createList(inputElement) {
+    let list = document.createElement("DIV");
     list.setAttribute("id", inputElement.id + "autocomplete-list");
     list.setAttribute("class", "autocomplete-items");
     list.style.position = 'absolute';
     list.style.left = inputElement.getBoundingClientRect().left + 'px';
     list.style.top = (inputElement.getBoundingClientRect().top + inputElement.offsetHeight) + 'px';
     document.body.appendChild(list);
+    return list;
+}
 
-    var searchTerm = inputElement.value;
-    suggestions.forEach(function(suggestion) {
-        var item = document.createElement("DIV");
-        var regex = new RegExp("(" + searchTerm + ")", "gi");
-        item.innerHTML = suggestion.replace(regex, "<strong>$1</strong>");
-        item.addEventListener("click", function() {
-            window.location.href = '/search-results?q=' + encodeURIComponent(suggestion);
-            closeAllLists();
-        });
-        list.appendChild(item);
+function createListItem(inputElement, list, suggestion) {
+    let item = document.createElement("DIV");
+    item.innerHTML = highlightTerm(inputElement.value, suggestion);
+    item.addEventListener("click", () => {
+        performSearch(suggestion);
+        closeAllLists();
     });
+    list.appendChild(item);
+}
+
+function highlightTerm(term, text) {
+    return text.replace(new RegExp("(" + term + ")", "gi"), "<strong>$1</strong>");
 }
 
 function closeAllLists(elmnt) {
-    var items = document.getElementsByClassName("autocomplete-items");
-    for (var i = 0; i < items.length; i++) {
-        if (elmnt != items[i]) {
-            items[i].parentNode.removeChild(items[i]);
-        }
+    let items = document.getElementsByClassName("autocomplete-items");
+    for (let i = 0; i < items.length; i++) {
+        if (elmnt != items[i]) items[i].parentNode.removeChild(items[i]);
     }
 }
 
 function performSearch(searchTerm) {
     if (searchTerm.length > 0) {
-        window.location.href = '/search-results?q=' + encodeURIComponent(searchTerm);
+        window.location.href = '/?q=' + encodeURIComponent(searchTerm);
     }
 }
+
 
 
 File: .\static\style.css
@@ -232,6 +236,49 @@ File: .\static\style.css
     background-color: #4CAF50;
     color: white;
 
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.grid-item {
+    padding: 20px;
+    border: 1px solid #d4d4d4;
+    text-align: center;
+}
+
+.grid-item a {
+    text-decoration: none;
+    color: black;
+}
+
+/* Responsive grid for smaller screens */
+@media (max-width: 600px) {
+    .grid-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+File: .\templates\404.html
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recipe Not Found</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Recipe Not Found</h1>
+        <p>The recipe you are looking for does not exist.</p>
+        <a href="/">Back to search</a>
+    </div>
+</body>
+</html>
+
 
 
 File: .\templates\index.html
@@ -250,41 +297,42 @@ File: .\templates\index.html
             <input type="text" id="quickSearchInput" placeholder="Search recipes or ingredients" class="ingredientInput" autocomplete="off">
             <button id="searchButton">Search</button>
         </div>
+        <div id="searchResults" class="grid-container">
+            {% for recipe in recipes %}
+                <div class="grid-item">
+                    <a href="/recipe-page?recipe={{ recipe.id }}">{{ recipe.name }}</a>
+                </div>
+            {% endfor %}
+        </div>
     </div>
 </body>
 </html>
 
 
 
-File: .\templates\search_results.html
+File: .\templates\recipe_page.html
 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Search Results</title>
+    <title>{{ recipe.name }}</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
-        <h1>Search Results</h1>
-        {% if recipes %}
-            <ul>
-                {% for recipe in recipes %}
-                    <li>
-                        <a href="/recipe-page?recipe={{ recipe.id }}">{{ recipe.name }}</a> - Ingredients:
-                        {% for ingredient in recipe.ingredients %}
-                            {{ ingredient.name }} ({{ ingredient.amount }}),
-                        {% endfor %}
-                        - Steps:
-                        {% for step in recipe.steps %}
-                            {{ step.step }};
-                        {% endfor %}
-                    </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>No recipes found.</p>
-        {% endif %}
+        <h1>{{ recipe.name }}</h1>
+        <h2>Ingredients</h2>
+        <ul>
+            {% for ingredient in recipe.ingredients %}
+                <li>{{ ingredient.name }}: {{ ingredient.amount }}</li>
+            {% endfor %}
+        </ul>
+        <h2>Steps</h2>
+        <ol>
+            {% for step in recipe.steps %}
+                <li>{{ step.step }}</li>
+            {% endfor %}
+        </ol>
         <a href="/">Back to search</a>
     </div>
 </body>

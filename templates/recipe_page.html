@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ recipe.name }}</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>{{ recipe.name }}</h1>
+        <h2>Ingredients</h2>
+        <ul>
+            {% for ingredient in recipe.ingredients %}
+                <li>{{ ingredient.name }}: {{ ingredient.amount }}</li>
+            {% endfor %}
+        </ul>
+        <h2>Steps</h2>
+        <ol>
+            {% for step in recipe.steps %}
+                <li>{{ step.step }}</li>
+            {% endfor %}
+        </ol>
+        <a href="/">Back to search</a>
+    </div>
+</body>
+</html>
