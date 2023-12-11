@@ -1,35 +1,33 @@
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('addIngredientBtn').addEventListener('click', addIngredientField);
-    document.addEventListener('input', function(event) {
-        if (event.target.matches('.ingredientInput')) {
-            fetchIngredientSuggestions(event.target);
-        }
+    var searchInput = document.getElementById('quickSearchInput');
+    var searchButton = document.getElementById('searchButton');
+
+    searchInput.addEventListener('input', function(event) {
+        fetchSuggestions(event.target);
     });
+
+    searchButton.addEventListener('click', function() {
+        performSearch(searchInput.value);
+    });
+
     document.addEventListener("click", function (e) {
         closeAllLists(e.target);
     });
 });
 
-function addIngredientField() {
-    var newField = document.createElement('div');
-    newField.className = 'ingredientField';
-    newField.innerHTML = '<label>Ingredient:</label> <input type="text" name="ingredient" class="ingredientInput" autocomplete="off">';
-    document.getElementById('ingredientFields').appendChild(newField);
-}
-
-function fetchIngredientSuggestions(inputElement) {
+function fetchSuggestions(inputElement) {
     var searchTerm = inputElement.value;
     if (searchTerm.length < 1) {
         closeAllLists();
         return;
     }
 
-    fetch('/ingredient-suggestions?q=' + encodeURIComponent(searchTerm))
+    fetch('/search?q=' + encodeURIComponent(searchTerm))
         .then(response => response.json())
         .then(suggestions => {
             showSuggestions(inputElement, suggestions);
         })
-        .catch(error => console.error('Error fetching ingredient suggestions:', error));
+        .catch(error => console.error('Error fetching suggestions:', error));
 }
 
 function showSuggestions(inputElement, suggestions) {
@@ -44,11 +42,13 @@ function showSuggestions(inputElement, suggestions) {
     list.style.top = (inputElement.getBoundingClientRect().top + inputElement.offsetHeight) + 'px';
     document.body.appendChild(list);
 
+    var searchTerm = inputElement.value;
     suggestions.forEach(function(suggestion) {
         var item = document.createElement("DIV");
-        item.innerHTML = suggestion;
+        var regex = new RegExp("(" + searchTerm + ")", "gi");
+        item.innerHTML = suggestion.replace(regex, "<strong>$1</strong>");
         item.addEventListener("click", function() {
-            inputElement.value = suggestion;
+            window.location.href = '/search-results?q=' + encodeURIComponent(suggestion);
             closeAllLists();
         });
         list.appendChild(item);
@@ -61,5 +61,11 @@ function closeAllLists(elmnt) {
         if (elmnt != items[i]) {
             items[i].parentNode.removeChild(items[i]);
         }
+    }
+}
+
+function performSearch(searchTerm) {
+    if (searchTerm.length > 0) {
+        window.location.href = '/search-results?q=' + encodeURIComponent(searchTerm);
     }
 }

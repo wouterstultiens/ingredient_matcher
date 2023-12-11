@@ -2,26 +2,30 @@
 <html>
 <head>
     <title>Search Results</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Search Results</h1>
-    {% if recipes %}
-        <ul>
-            {% for recipe in recipes %}
-                <li>{{ recipe.name }} - Ingredients:
-                    {% for ingredient in recipe.ingredients %}
-                        {{ ingredient.name }} ({{ ingredient.amount }}),
-                    {% endfor %}
-                    - Steps:
-                    {% for step in recipe.steps %}
-                        {{ step.step }};
-                    {% endfor %}
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>No recipes found.</p>
-    {% endif %}
-    <a href="/">Back to search</a>
+    <div class="container">
+        <h1>Search Results</h1>
+        {% if recipes %}
+            <ul>
+                {% for recipe in recipes %}
+                    <li>
+                        <a href="/recipe-page?recipe={{ recipe.id }}">{{ recipe.name }}</a> - Ingredients:
+                        {% for ingredient in recipe.ingredients %}
+                            {{ ingredient.name }} ({{ ingredient.amount }}),
+                        {% endfor %}
+                        - Steps:
+                        {% for step in recipe.steps %}
+                            {{ step.step }};
+                        {% endfor %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No recipes found.</p>
+        {% endif %}
+        <a href="/">Back to search</a>
+    </div>
 </body>
 </html>

@@ -13,17 +13,15 @@ Project File Structure:
         style.css
     templates/
         index.html
-        search.html
         search_results.html
 
 Contents of .py and .html Files:
 
 File: .\app.py
 
-from flask import render_template, request
+from flask import render_template, request, jsonify
 from config import app, db
 from models import Recipe, Ingredient
-from flask import jsonify
 
 @app.route('/')
 def index():
@@ -31,24 +29,33 @@ def index():
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
-    if request.method == 'POST':
-        ingredients = [i for i in request.form.getlist('ingredient') if i]  # Filter out empty strings
-        recipes = Recipe.query.join(Recipe.ingredients).filter(Ingredient.name.in_(ingredients)).group_by(Recipe.id).having(db.func.count(Recipe.id) == len(ingredients)).all()
-        return render_template('search_results.html', recipes=recipes, ingredients=ingredients)
-    return render_template('search.html')
-
-@app.route('/ingredient-suggestions')
-def ingredient_suggestions():
     query = request.args.get('q', '')
     if query:
-        ingredient_list = Ingredient.query.with_entities(Ingredient.name).filter(Ingredient.name.startswith(query)).distinct().all()
-        suggestions = [ingredient.name for ingredient in ingredient_list]
-    else:
-        suggestions = []
-    return jsonify(suggestions)
+        ingredient_list = Ingredient.query.with_entities(Ingredient.name).filter(Ingredient.name.contains(query)).distinct().all()
+        recipe_list = Recipe.query.with_entities(Recipe.name).filter(Recipe.name.contains(query)).distinct().all()
+        suggestions = [ingredient.name for ingredient in ingredient_list] + [recipe.name for recipe in recipe_list]
+        return jsonify(suggestions)
+    return render_template('index.html')
+
+@app.route('/search-results')
+def search_results():
+    query = request.args.get('q', '')
+    if query:
+        # Check if the query matches an ingredient
+        matching_ingredient = Ingredient.query.filter(Ingredient.name.contains(query)).first()
+        if matching_ingredient:
+            # If it's an ingredient, find all recipes containing it
+            recipes = Recipe.query.join(Recipe.ingredients).filter(Ingredient.name.contains(query)).all()
+        else:
+            # Otherwise, search for recipes by name
+            recipes = Recipe.query.filter(Recipe.name.contains(query)).all()
+
+        return render_template('search_results.html', recipes=recipes, query=query)
+    return render_template('index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 File: .\config.py
@@ -68,9 +75,16 @@ from config import db
 class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    type = db.Column(db.String(50))
+    link = db.Column(db.String(255))
+    time_prepare = db.Column(db.String(50))
+    time_wait = db.Column(db.String(50))
+    rating = db.Column(db.Float)
+    tags = db.Column(db.String(255))
+    servings = db.Column(db.String(50))
     ingredients = db.relationship('Ingredient', backref='recipe', lazy=True)
     steps = db.relationship('RecipeStep', backref='recipe', lazy=True)
+    equipment = db.Column(db.String(255))
+    image = db.Column(db.String(255))
 
 class Ingredient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -82,7 +96,7 @@ class RecipeStep(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     step = db.Column(db.Text, nullable=False)
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipe.id'), nullable=False)
-
+    order = db.Column(db.Integer)  # To maintain the order of steps
 
 
 File: .\__init__.py
@@ -94,6 +108,132 @@ with app.app_context():
     db.create_all()
 
 
+File: .\static\dynamic_fields.js
+
+document.addEventListener('DOMContentLoaded', function() {
+    var searchInput = document.getElementById('quickSearchInput');
+    var searchButton = document.getElementById('searchButton');
+
+    searchInput.addEventListener('input', function(event) {
+        fetchSuggestions(event.target);
+    });
+
+    searchButton.addEventListener('click', function() {
+        performSearch(searchInput.value);
+    });
+
+    document.addEventListener("click", function (e) {
+        closeAllLists(e.target);
+    });
+});
+
+function fetchSuggestions(inputElement) {
+    var searchTerm = inputElement.value;
+    if (searchTerm.length < 1) {
+        closeAllLists();
+        return;
+    }
+
+    fetch('/search?q=' + encodeURIComponent(searchTerm))
+        .then(response => response.json())
+        .then(suggestions => {
+            showSuggestions(inputElement, suggestions);
+        })
+        .catch(error => console.error('Error fetching suggestions:', error));
+}
+
+function showSuggestions(inputElement, suggestions) {
+    closeAllLists();
+    if (!suggestions.length) return;
+
+    var list = document.createElement("DIV");
+    list.setAttribute("id", inputElement.id + "autocomplete-list");
+    list.setAttribute("class", "autocomplete-items");
+    list.style.position = 'absolute';
+    list.style.left = inputElement.getBoundingClientRect().left + 'px';
+    list.style.top = (inputElement.getBoundingClientRect().top + inputElement.offsetHeight) + 'px';
+    document.body.appendChild(list);
+
+    var searchTerm = inputElement.value;
+    suggestions.forEach(function(suggestion) {
+        var item = document.createElement("DIV");
+        var regex = new RegExp("(" + searchTerm + ")", "gi");
+        item.innerHTML = suggestion.replace(regex, "<strong>$1</strong>");
+        item.addEventListener("click", function() {
+            window.location.href = '/search-results?q=' + encodeURIComponent(suggestion);
+            closeAllLists();
+        });
+        list.appendChild(item);
+    });
+}
+
+function closeAllLists(elmnt) {
+    var items = document.getElementsByClassName("autocomplete-items");
+    for (var i = 0; i < items.length; i++) {
+        if (elmnt != items[i]) {
+            items[i].parentNode.removeChild(items[i]);
+        }
+    }
+}
+
+function performSearch(searchTerm) {
+    if (searchTerm.length > 0) {
+        window.location.href = '/search-results?q=' + encodeURIComponent(searchTerm);
+    }
+}
+
+
+File: .\static\style.css
+
+.autocomplete-items {
+    border: 1px solid #d4d4d4;
+    border-bottom: none;
+    border-top: none;
+    z-index: 99;
+    /* Position the autocomplete items to be the same width as the container */
+    top: 100%;
+    left: 0;
+    right: 0;
+}
+
+.autocomplete-items div {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #d4d4d4;
+}
+
+.autocomplete-items div:hover {
+    /* When hovering an item */
+    background-color: #e9e9e9;
+}
+
+.autocomplete-active {
+    /* When navigating through the items using the arrow keys */
+    background-color: DodgerBlue !important;
+    color: #ffffff;
+}
+
+.search-container {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.search-container input[type="text"] {
+    padding: 10px;
+    margin-right: 10px;
+    width: 300px;
+    border: 1px solid #d4d4d4;
+    border-radius: 4px;
+}
+
+.search-container button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+
+
+
 File: .\templates\index.html
 
 <!DOCTYPE html>
@@ -101,39 +241,15 @@ File: .\templates\index.html
 <head>
     <title>Recipe Matcher</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div class="container">
-        <h1>Welcome to Recipe Matcher</h1>
-        <a href="/search" class="btn">Search Recipes</a>
-    </div>
-</body>
-</html>
-
-
-
-File: .\templates\search.html
-
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Recipe Search</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <script src="{{ url_for('static', filename='dynamic_fields.js') }}"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Recipe Search</h1>
-        <form action="/search" method="post" id="searchForm">
-            <div id="ingredientFields">
-                <div class="ingredientField">
-                    <label>Ingredient:</label>
-                    <input type="text" name="ingredient" class="ingredientInput" autocomplete="off">
-                </div>
-            </div>
-            <button type="button" id="addIngredientBtn" class="btn">Add Another Ingredient</button>
-            <input type="submit" value="Search" class="btn">
-        </form>
+        <h1>Welcome to Recipe Matcher</h1>
+        <div class="search-container">
+            <input type="text" id="quickSearchInput" placeholder="Search recipes or ingredients" class="ingredientInput" autocomplete="off">
+            <button id="searchButton">Search</button>
+        </div>
     </div>
 </body>
 </html>
@@ -146,27 +262,32 @@ File: .\templates\search_results.html
 <html>
 <head>
     <title>Search Results</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Search Results</h1>
-    {% if recipes %}
-        <ul>
-            {% for recipe in recipes %}
-                <li>{{ recipe.name }} - Ingredients:
-                    {% for ingredient in recipe.ingredients %}
-                        {{ ingredient.name }} ({{ ingredient.amount }}),
-                    {% endfor %}
-                    - Steps:
-                    {% for step in recipe.steps %}
-                        {{ step.step }};
-                    {% endfor %}
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>No recipes found.</p>
-    {% endif %}
-    <a href="/">Back to search</a>
+    <div class="container">
+        <h1>Search Results</h1>
+        {% if recipes %}
+            <ul>
+                {% for recipe in recipes %}
+                    <li>
+                        <a href="/recipe-page?recipe={{ recipe.id }}">{{ recipe.name }}</a> - Ingredients:
+                        {% for ingredient in recipe.ingredients %}
+                            {{ ingredient.name }} ({{ ingredient.amount }}),
+                        {% endfor %}
+                        - Steps:
+                        {% for step in recipe.steps %}
+                            {{ step.step }};
+                        {% endfor %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No recipes found.</p>
+        {% endif %}
+        <a href="/">Back to search</a>
+    </div>
 </body>
 </html>
+
 

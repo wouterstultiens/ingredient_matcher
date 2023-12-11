@@ -33,7 +33,7 @@ def write_file_contents(directory, formats, excluded_dirs, excluded_files, outpu
 
 def main():
     directory = '.'  # Current directory
-    formats = ['.py', '.html']
+    formats = ['.py', '.html', '.css', '.js']
     output_file = 'project_structure.txt'
     excluded_dirs = {'venv', '.git', '.idea', '__pycache__', 'recipe_scraper'}
     excluded_files = {'project_contents.py', 'project_contents.txt', 'add_recipes.py'}
