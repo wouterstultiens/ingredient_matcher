@@ -14,12 +14,18 @@
         </div>
         <div id="searchResults" class="grid-container">
             {% for recipe in recipes %}
-                <div class="grid-item">
-                    {% if recipe.image %}
-                        <img src="{{ recipe.image }}" alt="{{ recipe.name }}">
-                    {% endif %}
-                    <a href="/recipe-page?recipe={{ recipe.id }}">{{ recipe.name }}</a>
-                </div>
+                <a href="/recipe-page?recipe={{ recipe.id }}" class="grid-item">
+                    <div class="recipe-image">
+                        {% if recipe.image %}
+                            <img src="{{ recipe.image }}" alt="{{ recipe.name }}">
+                        {% endif %}
+                    </div>
+                    <div class="recipe-details">
+                        <h3>{{ recipe.name }}</h3>
+                        <p>Rating: {{ recipe.rating | default('N/A') }}</p>
+                        <p>Reviews: {{ recipe.rating_count | default('0') }}</p>
+                    </div>
+                </a>
             {% endfor %}
         </div>
     </div>

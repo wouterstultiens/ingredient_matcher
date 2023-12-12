@@ -1,9 +1,9 @@
+/* Style for autocomplete suggestions */
 .autocomplete-items {
     border: 1px solid #d4d4d4;
     border-bottom: none;
     border-top: none;
     z-index: 99;
-    /* Position the autocomplete items to be the same width as the container */
     top: 100%;
     left: 0;
     right: 0;
@@ -17,16 +17,15 @@
 }
 
 .autocomplete-items div:hover {
-    /* When hovering an item */
     background-color: #e9e9e9;
 }
 
 .autocomplete-active {
-    /* When navigating through the items using the arrow keys */
     background-color: DodgerBlue !important;
     color: #ffffff;
 }
 
+/* Style for search container */
 .search-container {
     margin-bottom: 20px;
     text-align: center;
@@ -46,36 +45,38 @@
     color: white;
 }
 
+/* Style for the recipe grid */
 .grid-container {
     display: grid;
     grid-template-columns: repeat(3, 1fr); /* 3 columns */
     gap: 10px;
     margin-top: 20px;
-    width: 100%; /* Ensure full width */
 }
 
 .grid-item {
-    padding: 20px;
     border: 1px solid #d4d4d4;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%; /* Adjust width for grid items */
-}
-
-.grid-item a {
     text-decoration: none;
     color: black;
-    margin-top: 10px;
+    overflow: hidden; /* Ensure content fits */
 }
 
-.grid-item img {
+.recipe-image img {
     width: 100%;
     height: auto;
+    margin-bottom: 10px; /* Margin between image and text */
 }
 
-/* Responsive grid for smaller screens */
+.recipe-details {
+    text-align: center;
+    padding: 10px;
+}
+
+.recipe-details h3 {
+    margin-top: 0;
+    font-size: 1.2em;
+}
+
+/* Responsive adjustments */
 @media (max-width: 600px) {
     .grid-container {
         grid-template-columns: 1fr; /* 1 column for small screens */
