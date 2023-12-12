@@ -58,17 +58,24 @@
     text-decoration: none;
     color: black;
     overflow: hidden; /* Ensure content fits */
+    padding: 10px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth transition for hover effect */
+}
+
+.grid-item:hover {
+    transform: scale(1.05); /* Slightly scale up on hover */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
 }
 
 .recipe-image img {
-    width: 100%;
+    width: calc(100% - 20px); /* Adjust width to account for padding */
     height: auto;
-    margin-bottom: 10px; /* Margin between image and text */
+    margin: 10px 0; /* Margin for top and bottom */
 }
 
 .recipe-details {
     text-align: center;
-    padding: 10px;
+    padding: 0 10px 10px 10px; /* Padding on sides and bottom */
 }
 
 .recipe-details h3 {
