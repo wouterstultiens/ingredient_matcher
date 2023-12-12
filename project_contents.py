@@ -17,7 +17,7 @@ def list_files(startpath, excluded_dirs, excluded_files):
 def write_file_contents(directory, formats, excluded_dirs, excluded_files, output_file):
     with open(output_file, 'w') as file:
         file.write(list_files(directory, excluded_dirs, excluded_files))
-        file.write("\nContents of .py and .html Files:\n")
+        file.write(f"\nContents of {formats} Files:\n")
 
         for root, dirs, files in os.walk(directory):
             if any(excluded in root for excluded in excluded_dirs):
@@ -33,10 +33,10 @@ def write_file_contents(directory, formats, excluded_dirs, excluded_files, outpu
 
 def main():
     directory = '.'  # Current directory
-    formats = ['.py', '.html', '.css', '.js']
+    formats = ['.py']
     output_file = 'project_structure.txt'
-    excluded_dirs = {'venv', '.git', '.idea', '__pycache__', 'recipe_scraper'}
-    excluded_files = {'project_contents.py', 'project_contents.txt', 'add_recipes.py'}
+    excluded_dirs = {'venv', '.git', '.idea', '__pycache__'}
+    excluded_files = {'project_contents.py', 'project_contents.txt'}
 
     write_file_contents(directory, formats, excluded_dirs, excluded_files, output_file)
 

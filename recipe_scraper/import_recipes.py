@@ -13,6 +13,7 @@ def import_csv(csv_file):
                 time_prepare=row['time_prepare'],
                 time_wait=row['time_wait'],
                 rating=float(row['rating']) if row['rating'] else None,
+                rating_count=int(row['rating_count']) if row['rating_count'] else 0,
                 tags=row['tags'],
                 servings=row['servings'],
                 equipment=row['equipment'],
@@ -35,5 +36,10 @@ def import_csv(csv_file):
 
             db.session.commit()
 
-with app.app_context():
-    import_csv('allerhande/recipes.csv')
+def main():
+    with app.app_context():
+        import_csv('recipe_scraper/allerhande/recipes.csv')
+
+# The following lines should be at the very bottom of the file
+if __name__ == "__main__":
+    main()

@@ -7,6 +7,7 @@ class Recipe(db.Model):
     time_prepare = db.Column(db.String(50))
     time_wait = db.Column(db.String(50))
     rating = db.Column(db.Float)
+    rating_count = db.Column(db.Integer)
     tags = db.Column(db.String(255))
     servings = db.Column(db.String(50))
     ingredients = db.relationship('Ingredient', backref='recipe', lazy=True)
