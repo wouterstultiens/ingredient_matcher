@@ -111,7 +111,7 @@ def read_existing_recipes(filename='recipes.csv'):
 
 def main():
     base_url = "https://www.ah.nl/allerhande/recepten-zoeken?menugang=hoofdgerecht"
-    num_pages = 0
+    num_pages = 5
 
     scraped_recipes = read_existing_recipes()
     recipe_links = scrape_recipe_links(base_url, num_pages)

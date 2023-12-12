@@ -8,11 +8,6 @@ Project File Structure:
     __init__.py
     instance/
         recipes.db
-    recipe_scraper/
-        import_recipes.py
-        allerhande/
-            allerhande.py
-            recipes.csv
     static/
         dynamic_fields.js
         style.css
@@ -21,7 +16,7 @@ Project File Structure:
         index.html
         recipe_page.html
 
-Contents of ['.py'] Files:
+Contents of ['.py', '.html', '.css', '.js'] Files:
 
 File: .\app.py
 
@@ -94,6 +89,7 @@ class Recipe(db.Model):
     time_prepare = db.Column(db.String(50))
     time_wait = db.Column(db.String(50))
     rating = db.Column(db.Float)
+    rating_count = db.Column(db.Integer)
     tags = db.Column(db.String(255))
     servings = db.Column(db.String(50))
     ingredients = db.relationship('Ingredient', backref='recipe', lazy=True)
@@ -143,182 +139,247 @@ with app.app_context():
 
 
 
-File: .\recipe_scraper\import_recipes.py
+File: .\static\dynamic_fields.js
 
-import csv
-import ast  # To safely evaluate strings as Python literals
-from models import db, Recipe, Ingredient, RecipeStep
-from app import app
+document.addEventListener('DOMContentLoaded', function() {
+    let searchInput = document.getElementById('quickSearchInput');
+    let searchButton = document.getElementById('searchButton');
 
-def import_csv(csv_file):
-    with open(csv_file, 'r', encoding='utf-8') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            recipe = Recipe(
-                name=row['name'],
-                link=row['link'],
-                time_prepare=row['time_prepare'],
-                time_wait=row['time_wait'],
-                rating=float(row['rating']) if row['rating'] else None,
-                tags=row['tags'],
-                servings=row['servings'],
-                equipment=row['equipment'],
-                image=row['image']
-            )
-            db.session.add(recipe)
-            db.session.flush()
-
-            # Parse ingredients
-            ingredients_list = ast.literal_eval(row['ingredients'])
-            for ing in ingredients_list:
-                ingredient = Ingredient(name=ing[1], amount=ing[0], recipe_id=recipe.id)
-                db.session.add(ingredient)
-
-            # Parse steps
-            steps_list = ast.literal_eval(row['steps'])
-            for order, step in enumerate(steps_list):
-                recipe_step = RecipeStep(step=step, recipe_id=recipe.id, order=order)
-                db.session.add(recipe_step)
-
-            db.session.commit()
-
-def main():
-    with app.app_context():
-        import_csv('recipe_scraper/allerhande/recipes.csv')
-
-# The following lines should be at the very bottom of the file
-if __name__ == "__main__":
-    main()
-
-
-File: .\recipe_scraper\allerhande\allerhande.py
-
-from concurrent.futures import ThreadPoolExecutor
-import time
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from bs4 import BeautifulSoup
-import csv
-
-# Initialize constants
-MAX_THREADS = 5  # Max number of concurrent threads
-REQUEST_INTERVAL = 4  # Seconds between requests in each thread
-
-def init_driver():
-    options = Options()
-    options.add_argument('--headless')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--no-sandbox')
-    options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36')
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-def scrape_recipe_links(base_url, num_pages):
-    driver = init_driver()
-    all_recipe_links = []
-
-    for i in range(num_pages + 1):
-        driver.get(f"{base_url}&page={i}" if i > 0 else base_url)
-        time.sleep(5)
-
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        for div in soup.find_all('div', class_='column xxlarge-4 large-6 small-12'):
-            link_tag = div.find('a', href=True)
-            if link_tag and "recept/R-" in link_tag.get('href', ''):
-                name = link_tag.get('aria-label', '').replace('Recept: ', '')
-                link = "https://www.ah.nl" + link_tag['href']
-                img_tag = div.find('img', class_='card-image-set_imageSet__Su7xI')
-                image_src = img_tag['data-srcset'].split(', ')[-1].split(' ')[0] if img_tag else ''
-                all_recipe_links.append({'name': name, 'link': link, 'image': image_src})
-                print(f"{name}: link retrieved")
-
-    driver.quit()
-    return all_recipe_links
-
-def scrape_recipe_details(recipe_links, scraped_recipes):
-    driver = init_driver()
-    all_recipes = []
-
-    for recipe in recipe_links:
-        if recipe['link'] in scraped_recipes:
-            continue # Skip already scraped recipes
-
-        # Rate limiting
-        time.sleep(REQUEST_INTERVAL)
-
-        driver.get(recipe['link'])
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-
-        # Simplified scraping logic
-        recipe_info = {
-            'name': recipe['name'],
-            'link': recipe['link'],
-            'time_prepare': get_time_element(soup, 0),
-            'time_wait': get_time_element(soup, 1),
-            'rating': get_rating(soup),
-            'tags': [tag.text for tag in soup.select('.recipe-header-tags_tags__DFsas li .recipe-tag_text__aKcWG')],
-            'servings': get_text(soup, '.recipe-ingredients_count__zS2P-'),
-            'ingredients': [(amount.text.strip(), name.text.strip()) for amount, name in zip(soup.select('.recipe-ingredients_ingredientsList__thXVo .ingredient_unit__-ptEq'), soup.select('.recipe-ingredients_ingredientsList__thXVo .ingredient_name__WXu5R'))],
-            'equipment': [item.text.strip() for item in soup.select('.recipe-ingredients_kitchen__Ag6XI p.typography_root__Om3Wh')],
-            'steps': [step.text.strip() for step in soup.select('.recipe-steps_step__FYhB8 p.typography_root__Om3Wh')],
-            'image': recipe['image'],
+    searchInput.addEventListener('input', event => fetchSuggestions(event.target));
+    searchButton.addEventListener('click', () => performSearch(searchInput.value));
+    searchInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch(searchInput.value);
         }
-        print(recipe_info)
-        all_recipes.append(recipe_info)
+    });
+    document.addEventListener("click", e => closeAllLists(e.target));
+});
 
-    driver.quit()
-    return all_recipes
 
-def get_time_element(soup, index):
-    elements = soup.select('.recipe-header-time_timeLine__nn84w')
-    return elements[index].text if len(elements) > index else None
+function fetchSuggestions(inputElement) {
+    let searchTerm = inputElement.value;
+    if (searchTerm.length < 1) return closeAllLists();
 
-def get_rating(soup):
-    star_full_count = len(soup.select('.allerhande-icon.svg.svg--svg_star'))
-    star_half_count = len(soup.select('.allerhande-icon.svg.svg--svg_star-half'))
-    return star_full_count + star_half_count / 2
+    fetch('/search?q=' + encodeURIComponent(searchTerm))
+        .then(response => response.json())
+        .then(suggestions => showSuggestions(inputElement, suggestions))
+        .catch(error => console.error('Error fetching suggestions:', error));
+}
 
-def get_text(soup, selector):
-    element = soup.select_one(selector)
-    return element.text if element else None
+function showSuggestions(inputElement, suggestions) {
+    closeAllLists();
+    if (!suggestions.length) return;
 
-def save_to_csv(detailed_recipes, filename='recipes.csv'):
-    # Append to existing CSV instead of overwriting
-    with open(filename, 'a', newline='', encoding='utf-8') as output_file:
-        dict_writer = csv.DictWriter(output_file, detailed_recipes[0].keys())
-        dict_writer.writerows(detailed_recipes)
+    let list = createList(inputElement);
+    suggestions.forEach(suggestion => createListItem(inputElement, list, suggestion));
+}
 
-def read_existing_recipes(filename='recipes.csv'):
-    try:
-        with open(filename, newline='', encoding='utf-8') as file:
-            return {row['link'] for row in csv.DictReader(file)}
-    except FileNotFoundError:
-        return set()
+function createList(inputElement) {
+    let list = document.createElement("DIV");
+    list.setAttribute("id", inputElement.id + "autocomplete-list");
+    list.setAttribute("class", "autocomplete-items");
+    list.style.position = 'absolute';
+    list.style.left = inputElement.getBoundingClientRect().left + 'px';
+    list.style.top = (inputElement.getBoundingClientRect().top + inputElement.offsetHeight) + 'px';
+    document.body.appendChild(list);
+    return list;
+}
 
-def main():
-    base_url = "https://www.ah.nl/allerhande/recepten-zoeken?menugang=hoofdgerecht"
-    num_pages = 3
+function createListItem(inputElement, list, suggestion) {
+    let item = document.createElement("DIV");
+    item.innerHTML = highlightTerm(inputElement.value, suggestion);
+    item.addEventListener("click", () => {
+        performSearch(suggestion);
+        closeAllLists();
+    });
+    list.appendChild(item);
+}
 
-    scraped_recipes = read_existing_recipes()
-    recipe_links = scrape_recipe_links(base_url, num_pages)
+function highlightTerm(term, text) {
+    return text.replace(new RegExp("(" + term + ")", "gi"), "<strong>$1</strong>");
+}
 
-    # Filter links to include only those that haven't been scraped yet
-    new_recipe_links = [link for link in recipe_links if link['link'] not in scraped_recipes]
+function closeAllLists(elmnt) {
+    let items = document.getElementsByClassName("autocomplete-items");
+    for (let i = 0; i < items.length; i++) {
+        if (elmnt != items[i]) items[i].parentNode.removeChild(items[i]);
+    }
+}
 
-    # Using ThreadPoolExecutor for multithreading
-    with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
-        # Submit each batch of new recipe links to a separate thread
-        futures = [executor.submit(scrape_recipe_details, new_recipe_links[i:i + MAX_THREADS], scraped_recipes)
-                   for i in range(0, len(new_recipe_links), MAX_THREADS)]
+function performSearch(searchTerm) {
+    if (searchTerm.length > 0) {
+        window.location.href = '/?q=' + encodeURIComponent(searchTerm);
+    }
+}
 
-        # Retrieve results from futures
-        detailed_recipes = []
-        for future in futures:
-            detailed_recipes.extend(future.result())
 
-    save_to_csv(detailed_recipes)
 
-if __name__ == "__main__":
-    main()
+File: .\static\style.css
+
+.autocomplete-items {
+    border: 1px solid #d4d4d4;
+    border-bottom: none;
+    border-top: none;
+    z-index: 99;
+    /* Position the autocomplete items to be the same width as the container */
+    top: 100%;
+    left: 0;
+    right: 0;
+}
+
+.autocomplete-items div {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #d4d4d4;
+}
+
+.autocomplete-items div:hover {
+    /* When hovering an item */
+    background-color: #e9e9e9;
+}
+
+.autocomplete-active {
+    /* When navigating through the items using the arrow keys */
+    background-color: DodgerBlue !important;
+    color: #ffffff;
+}
+
+.search-container {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.search-container input[type="text"] {
+    padding: 10px;
+    margin-right: 10px;
+    width: 300px;
+    border: 1px solid #d4d4d4;
+    border-radius: 4px;
+}
+
+.search-container button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 columns */
+    gap: 10px;
+    margin-top: 20px;
+    width: 100%; /* Ensure full width */
+}
+
+.grid-item {
+    padding: 20px;
+    border: 1px solid #d4d4d4;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%; /* Adjust width for grid items */
+}
+
+.grid-item a {
+    text-decoration: none;
+    color: black;
+    margin-top: 10px;
+}
+
+.grid-item img {
+    width: 100%;
+    height: auto;
+}
+
+/* Responsive grid for smaller screens */
+@media (max-width: 600px) {
+    .grid-container {
+        grid-template-columns: 1fr; /* 1 column for small screens */
+    }
+}
+
+
+
+File: .\templates\404.html
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recipe Not Found</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Recipe Not Found</h1>
+        <p>The recipe you are looking for does not exist.</p>
+        <a href="/">Back to search</a>
+    </div>
+</body>
+</html>
+
+
+
+File: .\templates\index.html
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recipe Matcher</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='dynamic_fields.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to Recipe Matcher</h1>
+        <div class="search-container">
+            <input type="text" id="quickSearchInput" placeholder="Search recipes or ingredients" class="ingredientInput" autocomplete="off">
+            <button id="searchButton">Search</button>
+        </div>
+        <div id="searchResults" class="grid-container">
+            {% for recipe in recipes %}
+                <div class="grid-item">
+                    {% if recipe.image %}
+                        <img src="{{ recipe.image }}" alt="{{ recipe.name }}">
+                    {% endif %}
+                    <a href="/recipe-page?recipe={{ recipe.id }}">{{ recipe.name }}</a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
+
+
+
+File: .\templates\recipe_page.html
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ recipe.name }}</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>{{ recipe.name }}</h1>
+        <h2>Ingredients</h2>
+        <ul>
+            {% for ingredient in recipe.ingredients %}
+                <li>{{ ingredient.name }}: {{ ingredient.amount }}</li>
+            {% endfor %}
+        </ul>
+        <h2>Steps</h2>
+        <ol>
+            {% for step in recipe.steps %}
+                <li>{{ step.step }}</li>
+            {% endfor %}
+        </ol>
+        <a href="/">Back to search</a>
+    </div>
+</body>
+</html>
+
 
