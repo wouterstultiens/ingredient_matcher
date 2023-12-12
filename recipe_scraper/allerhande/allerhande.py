@@ -4,7 +4,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 import time
 from bs4 import BeautifulSoup
-from concurrent.futures import ThreadPoolExecutor
 import csv
 
 def init_driver():
@@ -31,34 +30,41 @@ def scrape_recipe_links(base_url, num_pages):
                 link = "https://www.ah.nl" + link_tag['href']
                 img_tag = div.find('img', class_='card-image-set_imageSet__Su7xI')
                 image_src = img_tag['data-srcset'].split(', ')[-1].split(' ')[0] if img_tag else ''
-                print(f"Recipe: {name} - retrieved")
                 all_recipe_links.append({'name': name, 'link': link, 'image': image_src})
 
     driver.quit()
     return all_recipe_links
 
-def scrape_recipe_details(driver, recipe_link):
-    driver.get(recipe_link['link'])
-    time.sleep(1)
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
+def scrape_recipe_details(recipe_links):
+    driver = init_driver()
+    all_recipes = []
 
-    # Simplified scraping logic
-    recipe_info = {
-        'name': recipe_link['name'],
-        'link': recipe_link['link'],
-        'time_prepare': get_time_element(soup, 0),
-        'time_wait': get_time_element(soup, 1),
-        'rating': get_rating(soup),
-        'tags': [tag.text for tag in soup.select('.recipe-header-tags_tags__DFsas li .recipe-tag_text__aKcWG')],
-        'servings': get_text(soup, '.recipe-ingredients_count__zS2P-'),
-        'ingredients': [(amount.text.strip(), name.text.strip()) for amount, name in zip(soup.select('.recipe-ingredients_ingredientsList__thXVo .ingredient_unit__-ptEq'), soup.select('.recipe-ingredients_ingredientsList__thXVo .ingredient_name__WXu5R'))],
-        'equipment': [item.text.strip() for item in soup.select('.recipe-ingredients_kitchen__Ag6XI p.typography_root__Om3Wh')],
-        'steps': [step.text.strip() for step in soup.select('.recipe-steps_step__FYhB8 p.typography_root__Om3Wh')],
-        'image': recipe_link['image'],
-    }
+    for recipe in recipe_links:
+        driver.get(recipe['link'])
+        time.sleep(1)
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
 
-    print(recipe_info)
-    return recipe_info
+        # Simplified scraping logic
+        recipe_info = {
+            'name': recipe['name'],
+            'link': recipe['link'],
+            'time_prepare': get_time_element(soup, 0),
+            'time_wait': get_time_element(soup, 1),
+            'rating': get_rating(soup),
+            'tags': [tag.text for tag in soup.select('.recipe-header-tags_tags__DFsas li .recipe-tag_text__aKcWG')],
+            'servings': get_text(soup, '.recipe-ingredients_count__zS2P-'),
+            'ingredients': [(amount.text.strip(), name.text.strip()) for amount, name in zip(soup.select('.recipe-ingredients_ingredientsList__thXVo .ingredient_unit__-ptEq'), soup.select('.recipe-ingredients_ingredientsList__thXVo .ingredient_name__WXu5R'))],
+            'equipment': [item.text.strip() for item in soup.select('.recipe-ingredients_kitchen__Ag6XI p.typography_root__Om3Wh')],
+            'steps': [step.text.strip() for step in soup.select('.recipe-steps_step__FYhB8 p.typography_root__Om3Wh')],
+            'image': recipe['image'],
+        }
+
+        print(recipe_info)
+
+        all_recipes.append(recipe_info)
+
+    driver.quit()
+    return all_recipes
 
 def get_time_element(soup, index):
     elements = soup.select('.recipe-header-time_timeLine__nn84w')
@@ -74,30 +80,21 @@ def get_text(soup, selector):
     return element.text if element else None
 
 def save_to_csv(detailed_recipes, filename='recipes.csv'):
-    keys = detailed_recipes[0].keys()
-    with open(filename, 'w', newline='', encoding='utf-8') as output_file:
-        dict_writer = csv.DictWriter(output_file, keys)
-        dict_writer.writeheader()
-        dict_writer.writerows(detailed_recipes)
+    if detailed_recipes:
+        keys = detailed_recipes[0].keys()
+        with open(filename, 'w', newline='', encoding='utf-8') as output_file:
+            dict_writer = csv.DictWriter(output_file, keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(detailed_recipes)
 
 def main():
+    # Main execution
     base_url = "https://www.ah.nl/allerhande/recepten-zoeken?menugang=hoofdgerecht"
     num_pages = 0
 
     recipe_links = scrape_recipe_links(base_url, num_pages)
+    detailed_recipes = scrape_recipe_details(recipe_links)
 
-    # Create a pool of drivers for concurrent scraping
-    drivers = [init_driver() for _ in range(len(recipe_links[:10]))]
-
-    # Use ThreadPoolExecutor to scrape recipe details concurrently
-    with ThreadPoolExecutor(max_workers=len(drivers)) as executor:
-        results = executor.map(scrape_recipe_details, drivers, recipe_links[:10])
-
-    # Close all drivers
-    for driver in drivers:
-        driver.quit()
-
-    detailed_recipes = list(results)
     save_to_csv(detailed_recipes)
 
     for recipe in detailed_recipes:
@@ -105,4 +102,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
