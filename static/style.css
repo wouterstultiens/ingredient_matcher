@@ -83,6 +83,12 @@
     font-size: 1.2em;
 }
 
+/* Style for filter and sort controls */
+.filter-container, .sort-container {
+    margin: 10px;
+    padding: 5px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 600px) {
     .grid-container {

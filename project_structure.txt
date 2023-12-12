@@ -217,12 +217,12 @@ function performSearch(searchTerm) {
 
 File: .\static\style.css
 
+/* Style for autocomplete suggestions */
 .autocomplete-items {
     border: 1px solid #d4d4d4;
     border-bottom: none;
     border-top: none;
     z-index: 99;
-    /* Position the autocomplete items to be the same width as the container */
     top: 100%;
     left: 0;
     right: 0;
@@ -236,16 +236,15 @@ File: .\static\style.css
 }
 
 .autocomplete-items div:hover {
-    /* When hovering an item */
     background-color: #e9e9e9;
 }
 
 .autocomplete-active {
-    /* When navigating through the items using the arrow keys */
     background-color: DodgerBlue !important;
     color: #ffffff;
 }
 
+/* Style for search container */
 .search-container {
     margin-bottom: 20px;
     text-align: center;
@@ -265,36 +264,45 @@ File: .\static\style.css
     color: white;
 }
 
+/* Style for the recipe grid */
 .grid-container {
     display: grid;
     grid-template-columns: repeat(3, 1fr); /* 3 columns */
     gap: 10px;
     margin-top: 20px;
-    width: 100%; /* Ensure full width */
 }
 
 .grid-item {
-    padding: 20px;
     border: 1px solid #d4d4d4;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%; /* Adjust width for grid items */
-}
-
-.grid-item a {
     text-decoration: none;
     color: black;
-    margin-top: 10px;
+    overflow: hidden; /* Ensure content fits */
+    padding: 10px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth transition for hover effect */
 }
 
-.grid-item img {
-    width: 100%;
+.grid-item:hover {
+    transform: scale(1.05); /* Slightly scale up on hover */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+}
+
+.recipe-image img {
+    width: calc(100% - 20px); /* Adjust width to account for padding */
     height: auto;
+    margin: 10px 0; /* Margin for top and bottom */
 }
 
-/* Responsive grid for smaller screens */
+.recipe-details {
+    text-align: center;
+    padding: 0 10px 10px 10px; /* Padding on sides and bottom */
+}
+
+.recipe-details h3 {
+    margin-top: 0;
+    font-size: 1.2em;
+}
+
+/* Responsive adjustments */
 @media (max-width: 600px) {
     .grid-container {
         grid-template-columns: 1fr; /* 1 column for small screens */
@@ -340,12 +348,18 @@ File: .\templates\index.html
         </div>
         <div id="searchResults" class="grid-container">
             {% for recipe in recipes %}
-                <div class="grid-item">
-                    {% if recipe.image %}
-                        <img src="{{ recipe.image }}" alt="{{ recipe.name }}">
-                    {% endif %}
-                    <a href="/recipe-page?recipe={{ recipe.id }}">{{ recipe.name }}</a>
-                </div>
+                <a href="/recipe-page?recipe={{ recipe.id }}" class="grid-item">
+                    <div class="recipe-image">
+                        {% if recipe.image %}
+                            <img src="{{ recipe.image }}" alt="{{ recipe.name }}">
+                        {% endif %}
+                    </div>
+                    <div class="recipe-details">
+                        <h3>{{ recipe.name }}</h3>
+                        <p>Rating: {{ recipe.rating | default('N/A') }}</p>
+                        <p>Reviews: {{ recipe.rating_count | default('0') }}</p>
+                    </div>
+                </a>
             {% endfor %}
         </div>
     </div>

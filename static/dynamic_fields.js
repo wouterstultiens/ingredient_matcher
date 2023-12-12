@@ -1,17 +1,50 @@
 document.addEventListener('DOMContentLoaded', function() {
     let searchInput = document.getElementById('quickSearchInput');
     let searchButton = document.getElementById('searchButton');
+    let minRatingSelect = document.getElementById('minRating');
+    let minRatingCountSlider = document.getElementById('minRatingCount');
+    let sortOptionSelect = document.getElementById('sortOption');
 
     searchInput.addEventListener('input', event => fetchSuggestions(event.target));
     searchButton.addEventListener('click', () => performSearch(searchInput.value));
+    minRatingSelect.addEventListener('change', () => updateSearchResults());
+    minRatingCountSlider.addEventListener('change', () => updateSearchResults());
+    sortOptionSelect.addEventListener('change', () => updateSearchResults());
+
     searchInput.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             performSearch(searchInput.value);
         }
     });
+
     document.addEventListener("click", e => closeAllLists(e.target));
 });
+
+function updateSearchResults() {
+    let searchTerm = document.getElementById('quickSearchInput').value;
+    let minRating = document.getElementById('minRating').value;
+    let minRatingCount = document.getElementById('minRatingCount').value;
+    let sortOption = document.getElementById('sortOption').value;
+
+    let searchParams = new URLSearchParams({
+        q: searchTerm,
+        minRating: minRating,
+        minRatingCount: minRatingCount,
+        sortOption: sortOption
+    });
+
+    fetch('/?'+ searchParams.toString())
+        .then(response => response.text())
+        .then(html => {
+            let parser = new DOMParser();
+            let doc = parser.parseFromString(html, 'text/html');
+            let newResults = doc.getElementById('searchResults');
+            let currentResults = document.getElementById('searchResults');
+            currentResults.innerHTML = newResults.innerHTML;
+        })
+        .catch(error => console.error('Error updating search results:', error));
+}
 
 
 function fetchSuggestions(inputElement) {

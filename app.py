@@ -3,21 +3,25 @@ from config import app, db
 from models import Recipe, Ingredient
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET'])
 def index():
-    query = request.args.get('q', '')
-    recipes = []
-    if query:
-        # Check if the query matches an ingredient
-        matching_ingredient = Ingredient.query.filter(Ingredient.name.contains(query)).first()
-        if matching_ingredient:
-            # If it's an ingredient, find all recipes containing it
-            recipes = Recipe.query.join(Recipe.ingredients).filter(Ingredient.name.contains(query)).all()
-        else:
-            # Otherwise, search for recipes by name
-            recipes = Recipe.query.filter(Recipe.name.contains(query)).all()
+    min_rating = request.args.get('minRating', 0.5, type=float)
+    min_rating_count = request.args.get('minRatingCount', 0, type=int)
+    sort_option = request.args.get('sortOption', 'name')
 
-    return render_template('index.html', recipes=recipes, query=query)
+    # Modify query based on filters and sorting
+    query = Recipe.query
+    if min_rating:
+        query = query.filter(Recipe.rating >= min_rating)
+    if min_rating_count:
+        query = query.filter(Recipe.rating_count >= min_rating_count)
+    if sort_option == 'rating':
+        query = query.order_by(Recipe.rating.desc(), Recipe.name)
+    else:
+        query = query.order_by(Recipe.name)
+
+    recipes = query.all()
+    return render_template('index.html', recipes=recipes)
 
 
 @app.route('/search', methods=['GET'])

@@ -8,10 +8,39 @@
 <body>
     <div class="container">
         <h1>Welcome to Recipe Matcher</h1>
+
+        <!-- Filter and Sorting Controls -->
+        <div class="filter-sort-container">
+            <div class="filter-container">
+                <label for="minRating">Minimum Rating:</label>
+                <select id="minRating">
+                    <option value="0.5">0.5</option>
+                    <option value="1.0">1.0</option>
+                    <option value="1.5">1.5</option>
+                    <!-- Add options up to 5 -->
+                    <option value="5.0">5.0</option>
+                </select>
+
+                <label for="minRatingCount">Minimum Rating Count:</label>
+                <input type="range" id="minRatingCount" min="0" max="100" value="0"> <!-- Adjust max based on your data -->
+            </div>
+
+            <div class="sort-container">
+                <label for="sortOption">Sort by:</label>
+                <select id="sortOption">
+                    <option value="rating">Rating</option>
+                    <option value="name">Name</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Search Container -->
         <div class="search-container">
             <input type="text" id="quickSearchInput" placeholder="Search recipes or ingredients" class="ingredientInput" autocomplete="off">
             <button id="searchButton">Search</button>
         </div>
+
+        <!-- Search Results Grid -->
         <div id="searchResults" class="grid-container">
             {% for recipe in recipes %}
                 <a href="/recipe-page?recipe={{ recipe.id }}" class="grid-item">
