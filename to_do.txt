@@ -1,0 +1,24 @@
+# Backend
+
+1. Scraper
+- Scrape all recipes from AH (all types)
+- Rescrape recipes that are not scraped correctly
+- Scrape other recipe sites
+
+# Frontend
+
+## Search page
+1. Tags
+- Type: lunch / hoofdgerecht / diner
+- Dieet: geen / vegetarisch / veganistisch
+2. Sorting
+- Minimum rating count
+3. Grid item design
+- add stars + review count
+- add icon for vegetarisch / veganistisch
+- make design nicer
+- add dynamic grid width for different screen sizes
+
+## Recipe page
+1. Input all items to show on recipe page
+2. Make design

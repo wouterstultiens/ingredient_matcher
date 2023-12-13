@@ -1,14 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     let searchInput = document.getElementById('quickSearchInput');
     let searchButton = document.getElementById('searchButton');
-    let minRatingSelect = document.getElementById('minRating');
-    let minRatingCountSlider = document.getElementById('minRatingCount');
+    let minRatingCountInput = document.getElementById('minRatingCount');
     let sortOptionSelect = document.getElementById('sortOption');
 
     searchInput.addEventListener('input', event => fetchSuggestions(event.target));
     searchButton.addEventListener('click', () => performSearch(searchInput.value));
-    minRatingSelect.addEventListener('change', () => updateSearchResults());
-    minRatingCountSlider.addEventListener('change', () => updateSearchResults());
+    minRatingCountInput.addEventListener('change', () => updateSearchResults());
     sortOptionSelect.addEventListener('change', () => updateSearchResults());
 
     searchInput.addEventListener('keypress', function (e) {
@@ -23,18 +21,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function updateSearchResults() {
     let searchTerm = document.getElementById('quickSearchInput').value;
-    let minRating = document.getElementById('minRating').value;
     let minRatingCount = document.getElementById('minRatingCount').value;
     let sortOption = document.getElementById('sortOption').value;
 
     let searchParams = new URLSearchParams({
         q: searchTerm,
-        minRating: minRating,
         minRatingCount: minRatingCount,
         sortOption: sortOption
     });
 
-    fetch('/?'+ searchParams.toString())
+    let gridContainer = document.getElementById('searchResults');
+    // Set grid container to loading animation
+    gridContainer.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
+    gridContainer.style.height = '100vh'; // Adjust height to cover the grid
+
+    fetch('/?' + searchParams.toString())
         .then(response => response.text())
         .then(html => {
             let parser = new DOMParser();
@@ -42,10 +43,14 @@ function updateSearchResults() {
             let newResults = doc.getElementById('searchResults');
             let currentResults = document.getElementById('searchResults');
             currentResults.innerHTML = newResults.innerHTML;
+            currentResults.style.height = 'auto'; // Reset height after loading
         })
-        .catch(error => console.error('Error updating search results:', error));
+        .catch(error => {
+            console.error('Error updating search results:', error);
+            gridContainer.innerHTML = '<p>Error loading recipes. Please try again.</p>';
+            gridContainer.style.height = 'auto'; // Reset height on error
+        });
 }
-
 
 function fetchSuggestions(inputElement) {
     let searchTerm = inputElement.value;
@@ -80,6 +85,7 @@ function createListItem(inputElement, list, suggestion) {
     let item = document.createElement("DIV");
     item.innerHTML = highlightTerm(inputElement.value, suggestion);
     item.addEventListener("click", () => {
+        inputElement.value = suggestion; // Set input value to the clicked suggestion
         performSearch(suggestion);
         closeAllLists();
     });
@@ -97,8 +103,30 @@ function closeAllLists(elmnt) {
     }
 }
 
+// Add the updated performSearch function
 function performSearch(searchTerm) {
     if (searchTerm.length > 0) {
-        window.location.href = '/?q=' + encodeURIComponent(searchTerm);
+        let searchParams = new URLSearchParams({
+            query: searchTerm,
+            sortOption: 'name' // Default sort by name
+        });
+        fetch('/?' + searchParams.toString())
+            .then(response => response.text())
+            .then(html => {
+                let parser = new DOMParser();
+                let doc = parser.parseFromString(html, 'text/html');
+                let newResults = doc.getElementById('searchResults');
+                let currentResults = document.getElementById('searchResults');
+
+                // Add animation here
+                currentResults.style.opacity = 0;
+                setTimeout(() => {
+                    currentResults.innerHTML = newResults.innerHTML;
+                    currentResults.style.opacity = 1;
+                }, 500); // Adjust time for desired animation effect
+            })
+            .catch(error => console.error('Error fetching search results:', error));
     }
+    closeAllLists();
 }
+

@@ -2,14 +2,14 @@ from flask import render_template, request, jsonify
 from config import app, db
 from models import Recipe, Ingredient
 
-
 @app.route('/', methods=['GET'])
 def index():
     min_rating = request.args.get('minRating', 0.5, type=float)
     min_rating_count = request.args.get('minRatingCount', 0, type=int)
     sort_option = request.args.get('sortOption', 'name')
+    query_param = request.args.get('query', '')
 
-    # Modify query based on filters and sorting
+    # Modify query based on filters, sorting, and search query
     query = Recipe.query
     if min_rating:
         query = query.filter(Recipe.rating >= min_rating)
@@ -20,9 +20,18 @@ def index():
     else:
         query = query.order_by(Recipe.name)
 
-    recipes = query.all()
-    return render_template('index.html', recipes=recipes)
+    # Filter recipes based on search query if provided
+    if query_param:
+        query = query.filter(Recipe.name.contains(query_param) |
+                             Recipe.ingredients.any(Ingredient.name.contains(query_param)))
 
+    recipes = query.all()
+
+    # Check for AJAX request
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render_template('partials/recipe_grid.html', recipes=recipes)
+
+    return render_template('index.html', recipes=recipes)
 
 @app.route('/search', methods=['GET'])
 def search():
@@ -43,7 +52,6 @@ def recipe_page():
         if recipe:
             return render_template('recipe_page.html', recipe=recipe)
     return render_template('404.html')  # Template for page not found
-
 
 if __name__ == '__main__':
     app.run(debug=True)

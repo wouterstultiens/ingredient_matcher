@@ -1,28 +1,17 @@
-/* Style for autocomplete suggestions */
-.autocomplete-items {
-    border: 1px solid #d4d4d4;
-    border-bottom: none;
-    border-top: none;
-    z-index: 99;
-    top: 100%;
-    left: 0;
-    right: 0;
+/* General body styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
 }
 
-.autocomplete-items div {
-    padding: 10px;
-    cursor: pointer;
-    background-color: #fff;
-    border-bottom: 1px solid #d4d4d4;
-}
-
-.autocomplete-items div:hover {
-    background-color: #e9e9e9;
-}
-
-.autocomplete-active {
-    background-color: DodgerBlue !important;
-    color: #ffffff;
+/* Style for the main container */
+.container {
+    width: 80%;
+    margin: auto;
+    overflow: hidden;
+    padding: 20px;
 }
 
 /* Style for search container */
@@ -35,14 +24,33 @@
     padding: 10px;
     margin-right: 10px;
     width: 300px;
-    border: 1px solid #d4d4d4;
+    border: 1px solid #ccc;
     border-radius: 4px;
 }
 
 .search-container button {
     padding: 10px 20px;
-    background-color: #4CAF50;
+    background-color: #5cb85c;
     color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.search-container button:hover {
+    background-color: #4cae4c;
+}
+
+/* Style for filter and sort controls */
+.filter-sort-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.filter-container, .sort-container {
+    margin: 0 10px;
 }
 
 /* Style for the recipe grid */
@@ -50,44 +58,88 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr); /* 3 columns */
     gap: 10px;
-    margin-top: 20px;
 }
 
 .grid-item {
-    border: 1px solid #d4d4d4;
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
     text-decoration: none;
     color: black;
-    overflow: hidden; /* Ensure content fits */
-    padding: 10px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth transition for hover effect */
 }
 
 .grid-item:hover {
-    transform: scale(1.05); /* Slightly scale up on hover */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+    transform: scale(1.02); /* Reduced scale for less intense effect */
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Faster transition */
 }
 
 .recipe-image img {
-    width: calc(100% - 20px); /* Adjust width to account for padding */
+    max-width: 100%;
     height: auto;
-    margin: 10px 0; /* Margin for top and bottom */
-}
-
-.recipe-details {
-    text-align: center;
-    padding: 0 10px 10px 10px; /* Padding on sides and bottom */
 }
 
 .recipe-details h3 {
     margin-top: 0;
-    font-size: 1.2em;
 }
 
-/* Style for filter and sort controls */
-.filter-container, .sort-container {
-    margin: 10px;
-    padding: 5px;
+/* Style for autocomplete dropdown */
+.autocomplete-items {
+    border: 1px solid #d4d4d4;
+    border-bottom: none;
+    border-top: none;
+    z-index: 99;
+    /* position the autocomplete items to be the same width as the container */
+    top: 100%;
+    left: 0;
+    right: 0;
 }
+
+.autocomplete-items div {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #d4d4d4;
+}
+
+/* When hovering an item */
+.autocomplete-items div:hover {
+    background-color: #e9e9e9;
+}
+
+/* When navigating through the items using the arrow keys */
+.autocomplete-active {
+    background-color: DodgerBlue !important;
+    color: #ffffff;
+}
+
+.loader-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.loader {
+    border: 5px solid #f3f3f3; /* Light grey border */
+    border-top: 5px solid #3498db; /* Blue border */
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Adjust the height of the grid container to accommodate the loader */
+.grid-container {
+    min-height: 200px; /* Adjust as needed */
+}
+
 
 /* Responsive adjustments */
 @media (max-width: 600px) {

@@ -1,30 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Recipe Matcher</title>
+    <title>Recipe Search</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <script src="{{ url_for('static', filename='dynamic_fields.js') }}"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Welcome to Recipe Matcher</h1>
+        <!-- Search Container -->
+        <div class="search-container">
+            <input type="text" id="quickSearchInput" placeholder="Search recipes or ingredients" class="ingredientInput" autocomplete="off">
+            <button id="searchButton">Search</button>
+        </div>
 
         <!-- Filter and Sorting Controls -->
         <div class="filter-sort-container">
-            <div class="filter-container">
-                <label for="minRating">Minimum Rating:</label>
-                <select id="minRating">
-                    <option value="0.5">0.5</option>
-                    <option value="1.0">1.0</option>
-                    <option value="1.5">1.5</option>
-                    <!-- Add options up to 5 -->
-                    <option value="5.0">5.0</option>
-                </select>
-
-                <label for="minRatingCount">Minimum Rating Count:</label>
-                <input type="range" id="minRatingCount" min="0" max="100" value="0"> <!-- Adjust max based on your data -->
-            </div>
-
             <div class="sort-container">
                 <label for="sortOption">Sort by:</label>
                 <select id="sortOption">
@@ -32,12 +22,11 @@
                     <option value="name">Name</option>
                 </select>
             </div>
-        </div>
 
-        <!-- Search Container -->
-        <div class="search-container">
-            <input type="text" id="quickSearchInput" placeholder="Search recipes or ingredients" class="ingredientInput" autocomplete="off">
-            <button id="searchButton">Search</button>
+            <div class="filter-container">
+                <label for="minRatingCount">Minimum Rating Count:</label>
+                <input type="number" id="minRatingCount" min="0" value="0" style="width: 60px;">
+            </div>
         </div>
 
         <!-- Search Results Grid -->
@@ -51,8 +40,7 @@
                     </div>
                     <div class="recipe-details">
                         <h3>{{ recipe.name }}</h3>
-                        <p>Rating: {{ recipe.rating | default('N/A') }}</p>
-                        <p>Reviews: {{ recipe.rating_count | default('0') }}</p>
+                        <p>Rating: {{ recipe.rating | default('N/A') }} ({{ recipe.rating_count | default('0') }})</p>
                     </div>
                 </a>
             {% endfor %}

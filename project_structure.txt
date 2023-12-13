@@ -5,6 +5,7 @@ Project File Structure:
     config.py
     models.py
     project_structure.txt
+    to_do.txt
     __init__.py
     instance/
         recipes.db
@@ -24,23 +25,36 @@ from flask import render_template, request, jsonify
 from config import app, db
 from models import Recipe, Ingredient
 
-
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET'])
 def index():
-    query = request.args.get('q', '')
-    recipes = []
-    if query:
-        # Check if the query matches an ingredient
-        matching_ingredient = Ingredient.query.filter(Ingredient.name.contains(query)).first()
-        if matching_ingredient:
-            # If it's an ingredient, find all recipes containing it
-            recipes = Recipe.query.join(Recipe.ingredients).filter(Ingredient.name.contains(query)).all()
-        else:
-            # Otherwise, search for recipes by name
-            recipes = Recipe.query.filter(Recipe.name.contains(query)).all()
+    min_rating = request.args.get('minRating', 0.5, type=float)
+    min_rating_count = request.args.get('minRatingCount', 0, type=int)
+    sort_option = request.args.get('sortOption', 'name')
+    query_param = request.args.get('query', '')
 
-    return render_template('index.html', recipes=recipes, query=query)
+    # Modify query based on filters, sorting, and search query
+    query = Recipe.query
+    if min_rating:
+        query = query.filter(Recipe.rating >= min_rating)
+    if min_rating_count:
+        query = query.filter(Recipe.rating_count >= min_rating_count)
+    if sort_option == 'rating':
+        query = query.order_by(Recipe.rating.desc(), Recipe.name)
+    else:
+        query = query.order_by(Recipe.name)
 
+    # Filter recipes based on search query if provided
+    if query_param:
+        query = query.filter(Recipe.name.contains(query_param) |
+                             Recipe.ingredients.any(Ingredient.name.contains(query_param)))
+
+    recipes = query.all()
+
+    # Check for AJAX request
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render_template('partials/recipe_grid.html', recipes=recipes)
+
+    return render_template('index.html', recipes=recipes)
 
 @app.route('/search', methods=['GET'])
 def search():
@@ -61,7 +75,6 @@ def recipe_page():
         if recipe:
             return render_template('recipe_page.html', recipe=recipe)
     return render_template('404.html')  # Template for page not found
-
 
 if __name__ == '__main__':
     app.run(debug=True)
@@ -144,18 +157,49 @@ File: .\static\dynamic_fields.js
 document.addEventListener('DOMContentLoaded', function() {
     let searchInput = document.getElementById('quickSearchInput');
     let searchButton = document.getElementById('searchButton');
+    let minRatingCountInput = document.getElementById('minRatingCount');
+    let sortOptionSelect = document.getElementById('sortOption');
 
     searchInput.addEventListener('input', event => fetchSuggestions(event.target));
     searchButton.addEventListener('click', () => performSearch(searchInput.value));
+    minRatingCountInput.addEventListener('change', () => updateSearchResults());
+    sortOptionSelect.addEventListener('change', () => updateSearchResults());
+
     searchInput.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             performSearch(searchInput.value);
         }
     });
+
     document.addEventListener("click", e => closeAllLists(e.target));
 });
 
+function updateSearchResults() {
+    let searchTerm = document.getElementById('quickSearchInput').value;
+    let minRatingCount = document.getElementById('minRatingCount').value;
+    let sortOption = document.getElementById('sortOption').value;
+
+    let searchParams = new URLSearchParams({
+        q: searchTerm,
+        minRatingCount: minRatingCount,
+        sortOption: sortOption
+    });
+
+    let gridContainer = document.getElementById('searchResults');
+    gridContainer.innerHTML = '<div class="loader"></div>';
+
+    fetch('/?' + searchParams.toString())
+        .then(response => response.text())
+        .then(html => {
+            let parser = new DOMParser();
+            let doc = parser.parseFromString(html, 'text/html');
+            let newResults = doc.getElementById('searchResults');
+            let currentResults = document.getElementById('searchResults');
+            currentResults.innerHTML = newResults.innerHTML;
+        })
+        .catch(error => console.error('Error updating search results:', error));
+}
 
 function fetchSuggestions(inputElement) {
     let searchTerm = inputElement.value;
@@ -190,6 +234,7 @@ function createListItem(inputElement, list, suggestion) {
     let item = document.createElement("DIV");
     item.innerHTML = highlightTerm(inputElement.value, suggestion);
     item.addEventListener("click", () => {
+        inputElement.value = suggestion; // Set input value to the clicked suggestion
         performSearch(suggestion);
         closeAllLists();
     });
@@ -207,41 +252,52 @@ function closeAllLists(elmnt) {
     }
 }
 
+// Add the updated performSearch function
 function performSearch(searchTerm) {
     if (searchTerm.length > 0) {
-        window.location.href = '/?q=' + encodeURIComponent(searchTerm);
+        let searchParams = new URLSearchParams({
+            query: searchTerm,
+            sortOption: 'name' // Default sort by name
+        });
+        fetch('/?' + searchParams.toString())
+            .then(response => response.text())
+            .then(html => {
+                let parser = new DOMParser();
+                let doc = parser.parseFromString(html, 'text/html');
+                let newResults = doc.getElementById('searchResults');
+                let currentResults = document.getElementById('searchResults');
+
+                // Add animation here
+                currentResults.style.opacity = 0;
+                setTimeout(() => {
+                    currentResults.innerHTML = newResults.innerHTML;
+                    currentResults.style.opacity = 1;
+                }, 500); // Adjust time for desired animation effect
+            })
+            .catch(error => console.error('Error fetching search results:', error));
     }
+    closeAllLists();
 }
+
 
 
 
 File: .\static\style.css
 
-/* Style for autocomplete suggestions */
-.autocomplete-items {
-    border: 1px solid #d4d4d4;
-    border-bottom: none;
-    border-top: none;
-    z-index: 99;
-    top: 100%;
-    left: 0;
-    right: 0;
+/* General body styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
 }
 
-.autocomplete-items div {
-    padding: 10px;
-    cursor: pointer;
-    background-color: #fff;
-    border-bottom: 1px solid #d4d4d4;
-}
-
-.autocomplete-items div:hover {
-    background-color: #e9e9e9;
-}
-
-.autocomplete-active {
-    background-color: DodgerBlue !important;
-    color: #ffffff;
+/* Style for the main container */
+.container {
+    width: 80%;
+    margin: auto;
+    overflow: hidden;
+    padding: 20px;
 }
 
 /* Style for search container */
@@ -254,14 +310,33 @@ File: .\static\style.css
     padding: 10px;
     margin-right: 10px;
     width: 300px;
-    border: 1px solid #d4d4d4;
+    border: 1px solid #ccc;
     border-radius: 4px;
 }
 
 .search-container button {
     padding: 10px 20px;
-    background-color: #4CAF50;
+    background-color: #5cb85c;
     color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.search-container button:hover {
+    background-color: #4cae4c;
+}
+
+/* Style for filter and sort controls */
+.filter-sort-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.filter-container, .sort-container {
+    margin: 0 10px;
 }
 
 /* Style for the recipe grid */
@@ -269,38 +344,82 @@ File: .\static\style.css
     display: grid;
     grid-template-columns: repeat(3, 1fr); /* 3 columns */
     gap: 10px;
-    margin-top: 20px;
 }
 
 .grid-item {
-    border: 1px solid #d4d4d4;
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
     text-decoration: none;
     color: black;
-    overflow: hidden; /* Ensure content fits */
-    padding: 10px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth transition for hover effect */
 }
 
 .grid-item:hover {
-    transform: scale(1.05); /* Slightly scale up on hover */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+    transform: scale(1.02); /* Reduced scale for less intense effect */
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Faster transition */
 }
 
 .recipe-image img {
-    width: calc(100% - 20px); /* Adjust width to account for padding */
+    max-width: 100%;
     height: auto;
-    margin: 10px 0; /* Margin for top and bottom */
-}
-
-.recipe-details {
-    text-align: center;
-    padding: 0 10px 10px 10px; /* Padding on sides and bottom */
 }
 
 .recipe-details h3 {
     margin-top: 0;
-    font-size: 1.2em;
 }
+
+/* Style for autocomplete dropdown */
+.autocomplete-items {
+    border: 1px solid #d4d4d4;
+    border-bottom: none;
+    border-top: none;
+    z-index: 99;
+    /* position the autocomplete items to be the same width as the container */
+    top: 100%;
+    left: 0;
+    right: 0;
+}
+
+.autocomplete-items div {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #d4d4d4;
+}
+
+/* When hovering an item */
+.autocomplete-items div:hover {
+    background-color: #e9e9e9;
+}
+
+/* When navigating through the items using the arrow keys */
+.autocomplete-active {
+    background-color: DodgerBlue !important;
+    color: #ffffff;
+}
+
+.loader {
+    border: 5px solid #f3f3f3; /* Light grey border */
+    border-top: 5px solid #3498db; /* Blue border */
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto; /* Center in the container */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Adjust the height of the grid container to accommodate the loader */
+.grid-container {
+    min-height: 200px; /* Adjust as needed */
+}
+
 
 /* Responsive adjustments */
 @media (max-width: 600px) {
@@ -308,7 +427,6 @@ File: .\static\style.css
         grid-template-columns: 1fr; /* 1 column for small screens */
     }
 }
-
 
 
 File: .\templates\404.html
@@ -335,17 +453,35 @@ File: .\templates\index.html
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Recipe Matcher</title>
+    <title>Recipe Search</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
     <script src="{{ url_for('static', filename='dynamic_fields.js') }}"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Welcome to Recipe Matcher</h1>
+        <!-- Search Container -->
         <div class="search-container">
             <input type="text" id="quickSearchInput" placeholder="Search recipes or ingredients" class="ingredientInput" autocomplete="off">
             <button id="searchButton">Search</button>
         </div>
+
+        <!-- Filter and Sorting Controls -->
+        <div class="filter-sort-container">
+            <div class="sort-container">
+                <label for="sortOption">Sort by:</label>
+                <select id="sortOption">
+                    <option value="rating">Rating</option>
+                    <option value="name">Name</option>
+                </select>
+            </div>
+
+            <div class="filter-container">
+                <label for="minRatingCount">Minimum Rating Count:</label>
+                <input type="number" id="minRatingCount" min="0" value="0" style="width: 60px;">
+            </div>
+        </div>
+
+        <!-- Search Results Grid -->
         <div id="searchResults" class="grid-container">
             {% for recipe in recipes %}
                 <a href="/recipe-page?recipe={{ recipe.id }}" class="grid-item">
@@ -356,8 +492,7 @@ File: .\templates\index.html
                     </div>
                     <div class="recipe-details">
                         <h3>{{ recipe.name }}</h3>
-                        <p>Rating: {{ recipe.rating | default('N/A') }}</p>
-                        <p>Reviews: {{ recipe.rating_count | default('0') }}</p>
+                        <p>Rating: {{ recipe.rating | default('N/A') }} ({{ recipe.rating_count | default('0') }})</p>
                     </div>
                 </a>
             {% endfor %}
@@ -365,7 +500,6 @@ File: .\templates\index.html
     </div>
 </body>
 </html>
-
 
 
 File: .\templates\recipe_page.html
