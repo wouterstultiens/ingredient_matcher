@@ -187,7 +187,9 @@ function updateSearchResults() {
     });
 
     let gridContainer = document.getElementById('searchResults');
-    gridContainer.innerHTML = '<div class="loader"></div>';
+    // Set grid container to loading animation
+    gridContainer.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
+    gridContainer.style.height = '100vh'; // Adjust height to cover the grid
 
     fetch('/?' + searchParams.toString())
         .then(response => response.text())
@@ -197,8 +199,13 @@ function updateSearchResults() {
             let newResults = doc.getElementById('searchResults');
             let currentResults = document.getElementById('searchResults');
             currentResults.innerHTML = newResults.innerHTML;
+            currentResults.style.height = 'auto'; // Reset height after loading
         })
-        .catch(error => console.error('Error updating search results:', error));
+        .catch(error => {
+            console.error('Error updating search results:', error);
+            gridContainer.innerHTML = '<p>Error loading recipes. Please try again.</p>';
+            gridContainer.style.height = 'auto'; // Reset height on error
+        });
 }
 
 function fetchSuggestions(inputElement) {
@@ -400,6 +407,13 @@ body {
     color: #ffffff;
 }
 
+.loader-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
 .loader {
     border: 5px solid #f3f3f3; /* Light grey border */
     border-top: 5px solid #3498db; /* Blue border */
@@ -407,7 +421,6 @@ body {
     width: 50px;
     height: 50px;
     animation: spin 1s linear infinite;
-    margin: 20px auto; /* Center in the container */
 }
 
 @keyframes spin {

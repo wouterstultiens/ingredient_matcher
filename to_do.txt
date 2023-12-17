@@ -11,11 +11,13 @@
 1. Tags
 - Type: lunch / hoofdgerecht / diner
 - Dieet: geen / vegetarisch / veganistisch
+- Moeilijkheidsgraad: makkelijk / gemiddeld / moeilijk
 2. Sorting
 - Minimum rating count
 3. Grid item design
 - add stars + review count
 - add icon for vegetarisch / veganistisch
+- add icon for makkelijk / gemiddeld / moeilijk
 - make design nicer
 - add dynamic grid width for different screen sizes
 
