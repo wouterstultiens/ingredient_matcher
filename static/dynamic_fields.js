@@ -1,77 +1,73 @@
 document.addEventListener('DOMContentLoaded', function() {
-    let searchInput = document.getElementById('quickSearchInput');
-    let searchButton = document.getElementById('searchButton');
-    let minRatingCountInput = document.getElementById('minRatingCount');
-    let sortOptionSelect = document.getElementById('sortOption');
-
-    searchInput.addEventListener('input', event => fetchSuggestions(event.target));
-    searchButton.addEventListener('click', () => performSearch(searchInput.value));
-    minRatingCountInput.addEventListener('change', () => updateSearchResults());
-    sortOptionSelect.addEventListener('change', () => updateSearchResults());
-
-    searchInput.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            performSearch(searchInput.value);
-        }
-    });
-
-    document.addEventListener("click", e => closeAllLists(e.target));
+    initializeEventListeners();
 });
 
-function updateSearchResults() {
-    let searchTerm = document.getElementById('quickSearchInput').value;
-    let minRatingCount = document.getElementById('minRatingCount').value;
-    let sortOption = document.getElementById('sortOption').value;
+function initializeEventListeners() {
+    const searchInput = document.getElementById('quickSearchInput');
+    const searchButton = document.getElementById('searchButton');
+    const minRatingCountInput = document.getElementById('minRatingCount');
+    const sortOptionSelect = document.getElementById('sortOption');
 
-    let searchParams = new URLSearchParams({
+    searchInput.addEventListener('input', event => fetchSuggestionsAsync(event.target));
+    searchButton.addEventListener('click', () => performSearchAsync(searchInput.value));
+    minRatingCountInput.addEventListener('change', () => updateSearchResultsAsync());
+    sortOptionSelect.addEventListener('change', () => updateSearchResultsAsync());
+    document.addEventListener("click", e => closeAllLists(e.target));
+}
+
+async function updateSearchResultsAsync() {
+    const searchTerm = document.getElementById('quickSearchInput').value;
+    const minRatingCount = document.getElementById('minRatingCount').value;
+    const sortOption = document.getElementById('sortOption').value;
+
+    const searchParams = new URLSearchParams({
         q: searchTerm,
         minRatingCount: minRatingCount,
         sortOption: sortOption
     });
 
-    let gridContainer = document.getElementById('searchResults');
-    // Set grid container to loading animation
+    const gridContainer = document.getElementById('searchResults');
     gridContainer.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
-    gridContainer.style.height = '100vh'; // Adjust height to cover the grid
+    gridContainer.style.height = '100vh';
 
-    fetch('/?' + searchParams.toString())
-        .then(response => response.text())
-        .then(html => {
-            let parser = new DOMParser();
-            let doc = parser.parseFromString(html, 'text/html');
-            let newResults = doc.getElementById('searchResults');
-            let currentResults = document.getElementById('searchResults');
-            currentResults.innerHTML = newResults.innerHTML;
-            currentResults.style.height = 'auto'; // Reset height after loading
-        })
-        .catch(error => {
-            console.error('Error updating search results:', error);
-            gridContainer.innerHTML = '<p>Error loading recipes. Please try again.</p>';
-            gridContainer.style.height = 'auto'; // Reset height on error
-        });
+    try {
+        const response = await fetch('/?' + searchParams.toString());
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newResults = doc.getElementById('searchResults');
+        gridContainer.innerHTML = newResults.innerHTML;
+        gridContainer.style.height = 'auto';
+    } catch (error) {
+        console.error('Error updating search results:', error);
+        gridContainer.innerHTML = '<p>Error loading recipes. Please try again.</p>';
+        gridContainer.style.height = 'auto';
+    }
 }
 
-function fetchSuggestions(inputElement) {
-    let searchTerm = inputElement.value;
+async function fetchSuggestionsAsync(inputElement) {
+    const searchTerm = inputElement.value;
     if (searchTerm.length < 1) return closeAllLists();
 
-    fetch('/search?q=' + encodeURIComponent(searchTerm))
-        .then(response => response.json())
-        .then(suggestions => showSuggestions(inputElement, suggestions))
-        .catch(error => console.error('Error fetching suggestions:', error));
+    try {
+        const response = await fetch('/search?q=' + encodeURIComponent(searchTerm));
+        const suggestions = await response.json();
+        showSuggestions(inputElement, suggestions);
+    } catch (error) {
+        console.error('Error fetching suggestions:', error);
+    }
 }
 
 function showSuggestions(inputElement, suggestions) {
     closeAllLists();
     if (!suggestions.length) return;
 
-    let list = createList(inputElement);
+    const list = createList(inputElement);
     suggestions.forEach(suggestion => createListItem(inputElement, list, suggestion));
 }
 
 function createList(inputElement) {
-    let list = document.createElement("DIV");
+    const list = document.createElement("DIV");
     list.setAttribute("id", inputElement.id + "autocomplete-list");
     list.setAttribute("class", "autocomplete-items");
     list.style.position = 'absolute';
@@ -82,11 +78,11 @@ function createList(inputElement) {
 }
 
 function createListItem(inputElement, list, suggestion) {
-    let item = document.createElement("DIV");
+    const item = document.createElement("DIV");
     item.innerHTML = highlightTerm(inputElement.value, suggestion);
     item.addEventListener("click", () => {
-        inputElement.value = suggestion; // Set input value to the clicked suggestion
-        performSearch(suggestion);
+        inputElement.value = suggestion;
+        performSearchAsync(suggestion);
         closeAllLists();
     });
     list.appendChild(item);
@@ -96,36 +92,42 @@ function highlightTerm(term, text) {
     return text.replace(new RegExp("(" + term + ")", "gi"), "<strong>$1</strong>");
 }
 
-function closeAllLists(elmnt) {
-    let items = document.getElementsByClassName("autocomplete-items");
+function closeAllLists(elmnt, inputElement) {
+    const items = document.getElementsByClassName("autocomplete-items");
     for (let i = 0; i < items.length; i++) {
-        if (elmnt != items[i]) items[i].parentNode.removeChild(items[i]);
+        if (elmnt != items[i] && elmnt != inputElement) {
+            items[i].parentNode.removeChild(items[i]);
+        }
     }
 }
 
-// Add the updated performSearch function
-function performSearch(searchTerm) {
+async function performSearchAsync(searchTerm) {
     if (searchTerm.length > 0) {
-        let searchParams = new URLSearchParams({
-            query: searchTerm,
-            sortOption: 'name' // Default sort by name
-        });
-        fetch('/?' + searchParams.toString())
-            .then(response => response.text())
-            .then(html => {
-                let parser = new DOMParser();
-                let doc = parser.parseFromString(html, 'text/html');
-                let newResults = doc.getElementById('searchResults');
-                let currentResults = document.getElementById('searchResults');
+        const minRatingCount = document.getElementById('minRatingCount').value;
+        const sortOption = document.getElementById('sortOption').value;
 
-                // Add animation here
-                currentResults.style.opacity = 0;
-                setTimeout(() => {
-                    currentResults.innerHTML = newResults.innerHTML;
-                    currentResults.style.opacity = 1;
-                }, 500); // Adjust time for desired animation effect
-            })
-            .catch(error => console.error('Error fetching search results:', error));
+        const searchParams = new URLSearchParams({
+            query: searchTerm,
+            minRatingCount: minRatingCount,
+            sortOption: sortOption
+        });
+
+        const gridContainer = document.getElementById('searchResults');
+        gridContainer.style.opacity = 0;
+        try {
+            const response = await fetch('/?' + searchParams.toString());
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newResults = doc.getElementById('searchResults');
+
+            setTimeout(() => {
+                gridContainer.innerHTML = newResults.innerHTML;
+                gridContainer.style.opacity = 1;
+            }, 500);
+        } catch (error) {
+            console.error('Error fetching search results:', error);
+        }
     }
     closeAllLists();
 }

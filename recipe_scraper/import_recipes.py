@@ -38,7 +38,9 @@ def import_csv(csv_file):
 
 def main():
     with app.app_context():
-        import_csv('recipe_scraper/allerhande/recipes.csv')
+        import os
+        print(os.getcwd())
+        import_csv('allerhande/recipes.csv')
 
 # The following lines should be at the very bottom of the file
 if __name__ == "__main__":

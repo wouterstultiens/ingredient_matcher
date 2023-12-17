@@ -70,9 +70,9 @@ body {
 }
 
 .grid-item:hover {
-    transform: scale(1.02); /* Reduced scale for less intense effect */
+    transform: scale(1.02);
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Faster transition */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .recipe-image img {
@@ -90,7 +90,6 @@ body {
     border-bottom: none;
     border-top: none;
     z-index: 99;
-    /* position the autocomplete items to be the same width as the container */
     top: 100%;
     left: 0;
     right: 0;
@@ -103,12 +102,10 @@ body {
     border-bottom: 1px solid #d4d4d4;
 }
 
-/* When hovering an item */
 .autocomplete-items div:hover {
     background-color: #e9e9e9;
 }
 
-/* When navigating through the items using the arrow keys */
 .autocomplete-active {
     background-color: DodgerBlue !important;
     color: #ffffff;
@@ -122,8 +119,8 @@ body {
 }
 
 .loader {
-    border: 5px solid #f3f3f3; /* Light grey border */
-    border-top: 5px solid #3498db; /* Blue border */
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
     border-radius: 50%;
     width: 50px;
     height: 50px;
@@ -137,13 +134,19 @@ body {
 
 /* Adjust the height of the grid container to accommodate the loader */
 .grid-container {
-    min-height: 200px; /* Adjust as needed */
+    min-height: 200px;
 }
-
 
 /* Responsive adjustments */
 @media (max-width: 600px) {
     .grid-container {
         grid-template-columns: 1fr; /* 1 column for small screens */
     }
+
+    .search-container input[type="text"], .search-container button {
+        width: 100%;
+        margin: 10px 0;
+    }
 }
+
+/* Additional responsive adjustments and custom styles as needed */

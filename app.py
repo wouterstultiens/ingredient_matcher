@@ -1,57 +1,32 @@
-from flask import render_template, request, jsonify
-from config import app, db
-from models import Recipe, Ingredient
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy_utils import database_exists, create_database
+from config import Config
+from models import db
+from routes.main import main
 
-@app.route('/', methods=['GET'])
-def index():
-    min_rating = request.args.get('minRating', 0.5, type=float)
-    min_rating_count = request.args.get('minRatingCount', 0, type=int)
-    sort_option = request.args.get('sortOption', 'name')
-    query_param = request.args.get('query', '')
+app = Flask(__name__)
+app.config.from_object(Config)
+db.init_app(app)
 
-    # Modify query based on filters, sorting, and search query
-    query = Recipe.query
-    if min_rating:
-        query = query.filter(Recipe.rating >= min_rating)
-    if min_rating_count:
-        query = query.filter(Recipe.rating_count >= min_rating_count)
-    if sort_option == 'rating':
-        query = query.order_by(Recipe.rating.desc(), Recipe.name)
-    else:
-        query = query.order_by(Recipe.name)
+def create_and_initialize_db(app):
+    with app.app_context():
+        # Check if the database exists, if not, create it
+        if not database_exists(app.config['SQLALCHEMY_DATABASE_URI']):
+            create_database(app.config['SQLALCHEMY_DATABASE_URI'])
+            db.create_all()
+            print("Database created and initialized.")
 
-    # Filter recipes based on search query if provided
-    if query_param:
-        query = query.filter(Recipe.name.contains(query_param) |
-                             Recipe.ingredients.any(Ingredient.name.contains(query_param)))
+        # Check if the database is empty (no recipes)
+        from models import Recipe
+        if not Recipe.query.first():
+            # If empty, import recipes
+            from recipe_scraper.import_recipes import main as import_recipes_main
+            import_recipes_main()
+            print("Recipes imported.")
 
-    recipes = query.all()
-
-    # Check for AJAX request
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render_template('partials/recipe_grid.html', recipes=recipes)
-
-    return render_template('index.html', recipes=recipes)
-
-@app.route('/search', methods=['GET'])
-def search():
-    query = request.args.get('q', '')
-    if query:
-        ingredient_list = Ingredient.query.with_entities(Ingredient.name).filter(
-            Ingredient.name.contains(query)).distinct().all()
-        recipe_list = Recipe.query.with_entities(Recipe.name).filter(Recipe.name.contains(query)).distinct().all()
-        suggestions = [ingredient.name for ingredient in ingredient_list] + [recipe.name for recipe in recipe_list]
-        return jsonify(suggestions)
-    return jsonify([])
-
-@app.route('/recipe-page', methods=['GET'])
-def recipe_page():
-    recipe_id = request.args.get('recipe', '')
-    if recipe_id:
-        recipe = Recipe.query.get(recipe_id)
-        if recipe:
-            return render_template('recipe_page.html', recipe=recipe)
-    return render_template('404.html')  # Template for page not found
+app.register_blueprint(main)
 
 if __name__ == '__main__':
+    create_and_initialize_db(app)
     app.run(debug=True)

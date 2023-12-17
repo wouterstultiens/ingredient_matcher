@@ -1,4 +1,5 @@
-from config import db
+from flask_sqlalchemy import SQLAlchemy
+db = SQLAlchemy()
 
 class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)

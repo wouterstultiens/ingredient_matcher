@@ -7,29 +7,26 @@
 </head>
 <body>
     <div class="container">
-        <!-- Search Container -->
         <div class="search-container">
-            <input type="text" id="quickSearchInput" placeholder="Search recipes or ingredients" class="ingredientInput" autocomplete="off">
+            <input type="text" id="quickSearchInput" placeholder="Search recipes or ingredients" autocomplete="off">
             <button id="searchButton">Search</button>
         </div>
 
-        <!-- Filter and Sorting Controls -->
         <div class="filter-sort-container">
             <div class="sort-container">
                 <label for="sortOption">Sort by:</label>
                 <select id="sortOption">
                     <option value="rating">Rating</option>
-                    <option value="name">Name</option>
+                    <option value="name" selected>Name</option>
                 </select>
             </div>
 
             <div class="filter-container">
                 <label for="minRatingCount">Minimum Rating Count:</label>
-                <input type="number" id="minRatingCount" min="0" value="0" style="width: 60px;">
+                <input type="number" id="minRatingCount" min="0" value="0">
             </div>
         </div>
 
-        <!-- Search Results Grid -->
         <div id="searchResults" class="grid-container">
             {% for recipe in recipes %}
                 <a href="/recipe-page?recipe={{ recipe.id }}" class="grid-item">
@@ -40,9 +37,11 @@
                     </div>
                     <div class="recipe-details">
                         <h3>{{ recipe.name }}</h3>
-                        <p>Rating: {{ recipe.rating | default('N/A') }} ({{ recipe.rating_count | default('0') }})</p>
+                        <p>Rating: {{ recipe.rating | default('N/A') }} ({{ recipe.rating_count | default('0') }} votes)</p>
                     </div>
                 </a>
+            {% else %}
+                <p>No recipes found. Try adjusting your search or filter criteria.</p>
             {% endfor %}
         </div>
     </div>
